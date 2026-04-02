@@ -24,7 +24,7 @@ export class DiskController {
         return disks;
 
         }catch(error){
-            throw error('Impossible de lire les disques du serveur', error);
+            throw Error('Impossible de lire les disques du serveur');
         }
         
     }
@@ -66,7 +66,7 @@ export class DiskController {
 async downloadFolderAsZip(
     @Query('diskPath') diskPath: string,
     @Query('folderPath') folderPath: string,
-    @Res() res: Response // <--- INDISPENSABLE pour envoyer le fichier
+    @Res() res: Response 
 ) {
     if (!diskPath || !folderPath) {
         throw new Error('diskPath and folderPath are required');
@@ -98,7 +98,7 @@ async downloadFolderAsZip(
 }
 
 @Post('uploadFiles')
-@UseInterceptors(FilesInterceptor('files')) // Gère les fichiers et dossiers
+@UseInterceptors(FilesInterceptor('files', Infinity)) 
 async uploadFiles(
   @Query('diskPath') diskPath: string,
   @Query('filePath') filePath: string,
