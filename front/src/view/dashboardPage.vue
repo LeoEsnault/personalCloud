@@ -74,7 +74,7 @@
             </button>
           </div>
           
-          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
             <div 
               v-for="(file, index) in filesList" 
               :key="index"
@@ -101,29 +101,29 @@
               <Icon icon="mdi:close-box" width="24" />
             </button>
           </div>
-          
-          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-            <div 
-              v-for="(item, index) in subFilesList" 
-              :key="index"
-              @click="openFile(item, true)"
-              @contextmenu.prevent="openContextMenu($event, item, true)"
-              @touchstart="onTouchStartMenu($event, item, true)"
-              @touchend="onTouchEndMenu"
-              class="flex items-center gap-2 p-3 bg-white border border-gray-100 rounded-lg text-sm text-gray-600 shadow-sm group hover:border-blue-400 transition-all select-none active:scale-95"
-            >
-              <Icon 
-                :icon="isFile(item.name || item) ? 'vscode-icons:default-file' : 'ic:baseline-folder'" 
-                width="20" 
-                class="shrink-0 group-hover:rotate-12 transition-transform"
-                :class="!isFile(item.name || item) ? 'text-blue-500' : ''"
-              />
-              <span class="truncate font-medium">{{ item.name || item }}</span>
-            </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+              <div 
+                v-for="(item, index) in subFilesList" 
+                :key="index"
+                @click="openFile(item, true)"
+                class="flex items-center gap-2 p-3 bg-white border border-gray-100 rounded-lg text-sm text-gray-600 shadow-sm group hover:border-blue-400 transition-all select-none active:scale-95 overflow-hidden"
+              >
+                <Icon 
+                  :icon="isFile(item.name || item) ? 'vscode-icons:default-file' : 'ic:baseline-folder'" 
+                  width="20" 
+                  class="shrink-0 group-hover:rotate-12 transition-transform"
+                  :class="!isFile(item.name || item) ? 'text-blue-500' : ''"
+                />
+
+                <span class="truncate font-medium flex-1">
+                  {{ item.name || item }}
+                </span>
+              </div>
           </div>
         </div>
       </div>
-
+<!-- Context Menu -->
       <div 
         v-if="contextMenu.show" 
         class="fixed inset-0 z-100 flex items-center justify-center bg-black/40 backdrop-blur-sm"
@@ -137,6 +137,7 @@
             <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Élément sélectionné</p>
             <p class="text-sm font-bold text-blue-700 truncate">{{ contextMenu.item?.name || contextMenu.item }}</p>
           </div>
+
           <!-- Modal import / telechargement -->
           <div class="p-2 space-y-1">
             <button 

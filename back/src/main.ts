@@ -14,7 +14,7 @@ async function bootstrap() {
 
   await app.register(contentParser, {
     limits: {
-      fieldNameSize: 100,      
+      fieldNameSize: 10000,      
       fieldSize: 10000000000,         
       fields: 100000000000,              
       fileSize: 100000000000000,   
