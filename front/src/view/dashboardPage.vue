@@ -232,7 +232,7 @@
         <button 
           v-if="currentMediaIndex > 0"
           @click.stop="prevMedia"
-          class="absolute left-6 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white p-4 rounded-full transition-all z-20"
+          class="absolute left-6 top-1/2 -translate-y-1/2 bg-transparent  hover:transform hover:scale-110   text-white p-4 rounded-full transition-all z-20"
         >
           <Icon icon="mdi:chevron-left" width="36" />
         </button>
@@ -255,7 +255,7 @@
         <button 
           v-if="currentMediaIndex < currentMediaList.length - 1"
           @click.stop="nextMedia"
-          class="absolute right-6 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white p-4 rounded-full transition-all z-20"
+          class="absolute right-6 top-1/2 -translate-y-1/2 bg-transparent  hover:transform hover:scale-110  text-white p-4 rounded-full transition-all z-20"
         >
           <Icon icon="mdi:chevron-right" width="36" />
         </button>
