@@ -36,6 +36,8 @@ pour le back
 
 SUPABASE_URL=https://monProjet
 SUPABASE_KEY=MaClefSupabase
+FRONTEND_URL=http://ladressedemonserveur.co
+
 
 pour le front 
 

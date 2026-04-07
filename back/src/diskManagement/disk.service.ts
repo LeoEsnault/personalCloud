@@ -1,17 +1,23 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { getDiskInfo } from 'node-disk-info';
-import { join, normalize } from 'path';
+import { join } from 'path';
 import * as fs from 'fs';
 import * as AdmZip from 'adm-zip';
 import * as path from 'path';
+
+// 1. On crée un petit type pour remplacer celui d'Express/Multer
+export interface FastifyFile {
+  filename: string;
+  mimetype: string;
+  buffer: Buffer;
+}
 
 @Injectable()
 export class DiskService {
   
   async getAvailableDisks() {
     try {
-      const disks = await getDiskInfo(); 
-      return disks;
+      return await getDiskInfo(); 
     } catch (error) {
       throw new InternalServerErrorException('Impossible de lire les disques du serveur');
     }
@@ -19,8 +25,7 @@ export class DiskService {
 
   async getFiles(diskPath: string) {
     try {
-      const files = await fs.promises.readdir(diskPath);
-      return files;
+      return await fs.promises.readdir(diskPath);
     } catch (error) {
       throw new InternalServerErrorException('Impossible de lire les fichiers du disque');
     }
@@ -29,16 +34,13 @@ export class DiskService {
   async getFileContenu(diskPath: string, filePath: string){
      const fileDirection = join(diskPath, filePath);
      try {
-      const files = await fs.promises.readdir(fileDirection);
-      return files;
+      return await fs.promises.readdir(fileDirection);
     } catch (error) {
-      throw new InternalServerErrorException('Impossible de lire les fichiers du disque');
+      throw new InternalServerErrorException('Impossible de lire les fichiers du dossier');
     }
   }
 
-async downloadFolderAsZip(fullPath: string): Promise<Buffer> {
-   
-
+  async downloadFolderAsZip(fullPath: string): Promise<Buffer> {
     if (!fs.existsSync(fullPath)) {
       throw new Error(`Le chemin n'existe pas : ${fullPath}`);
     }
@@ -49,23 +51,30 @@ async downloadFolderAsZip(fullPath: string): Promise<Buffer> {
     return zip.toBuffer();
   }
 
-  async saveFiles(diskPath: string, filePath: string, files: Express.Multer.File[]) {
+  // 2. On change le type de "files" et on passe en asynchrone pur
+  async saveFiles(diskPath: string, filePath: string, files: FastifyFile[]) {
     const fullPath = path.join(diskPath, filePath);
 
-    // Créer le dossier s'il n'existe pas
+    // Créer le dossier s'il n'existe pas (version non-bloquante)
     if (!fs.existsSync(fullPath)) {
-      fs.mkdirSync(fullPath, { recursive: true });
+      await fs.promises.mkdir(fullPath, { recursive: true });
     }
 
-    // Sauvegarder chaque fichier
-    const savedFiles = files.map((file) => {
-      const fileFullPath = path.join(fullPath, file.originalname);
-      fs.writeFileSync(fileFullPath, file.buffer);
-      return {
-        originalname: file.originalname,
-        path: fileFullPath,
-      };
-    });
+    // Sauvegarder chaque fichier en parallèle avec Promise.all (beaucoup plus rapide)
+    const savedFiles = await Promise.all(
+      files.map(async (file) => {
+        // Fastify utilise 'filename' au lieu de 'originalname'
+        const fileFullPath = path.join(fullPath, file.filename);
+        
+        // Ecriture non-bloquante
+        await fs.promises.writeFile(fileFullPath, file.buffer);
+        
+        return {
+          originalname: file.filename, // On garde ta clé originale au cas où ton Front l'attend
+          path: fileFullPath,
+        };
+      })
+    );
 
     return savedFiles;
   }

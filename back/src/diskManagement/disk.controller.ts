@@ -1,114 +1,125 @@
 import { 
-    Controller, Get, Post, Query, Res, Body, 
-    UseInterceptors, UploadedFiles, BadRequestException, UseGuards 
+    Controller, Get, Post, Query, Res, Req, 
+    BadRequestException, UseGuards 
 } from "@nestjs/common";
-import { FilesInterceptor } from '@nestjs/platform-express'; // Note le 's'
 import { DiskService } from "./disk.service";
-import { Response } from 'express';
+import { FastifyReply, FastifyRequest } from 'fastify'; // Import de Fastify
 import * as path from 'path';
-import { Multer } from 'multer';
+import * as fs from 'fs';
 import { SupabaseAuthGuard } from "src/supabase/supabase.authGuard";
-
+import "@fastify/multipart";
 
 @UseGuards(SupabaseAuthGuard)
 @Controller('disk')
 export class DiskController {
     constructor(private readonly diskService: DiskService) {}
+
     @Get('getDisk')
     async getAvailableDisks() {
-
-        try{
-
-        const disks = await this.diskService.getAvailableDisks();
-
-        return disks;
-
-        }catch(error){
-            throw Error('Impossible de lire les disques du serveur');
+        try {
+            return await this.diskService.getAvailableDisks();
+        } catch(error) {
+            throw new Error('Impossible de lire les disques du serveur');
         }
-        
     }
-    @Get('getFiles')
-    async getFiles(@Query('diskPath') diskPath: string): Promise<any>{
 
+    @Get('getFiles')
+    async getFiles(@Query('diskPath') diskPath: string): Promise<any> {
         if(!diskPath){
             throw new Error('Pas de chemin de disque')
         }
-        const response = await this.diskService.getFiles(diskPath);
-
-        return response
+        return await this.diskService.getFiles(diskPath);
     }
 
     @Get('getFileContenu')
-    async getFileContenu(@Query('diskPath') diskPath: string, @Query('filePath') filePath: string): Promise<any>{
-        
+    async getFileContenu(
+        @Query('diskPath') diskPath: string, 
+        @Query('filePath') filePath: string
+    ): Promise<any> {
         if(!diskPath || !filePath){
             console.error('Erreur dans le chemin disk et file')
             throw new Error('Erreur dans le chemin disk et file')
         }
-
-        const response = await this.diskService.getFileContenu(diskPath, filePath)
-
-        return response
+        return await this.diskService.getFileContenu(diskPath, filePath);
     }
+
     @Get('streamFile')
-        streamFile(
-            @Query('diskPath') diskPath: string, 
-            @Query('filePath') filePath: string, 
-            @Res() res: Response) {
-    if (!diskPath || !filePath) throw new Error('Paramètres manquants');
-    
-    const fullPath = path.join(diskPath, filePath);
-    return res.sendFile(fullPath);
-}
-
-@Get('downloadFolderAsZip')
-async downloadFolderAsZip(
-    @Query('diskPath') diskPath: string,
-    @Query('folderPath') folderPath: string,
-    @Res() res: Response 
-) {
-    if (!diskPath || !folderPath) {
-        throw new Error('diskPath and folderPath are required');
+    streamFile(
+        @Query('diskPath') diskPath: string, 
+        @Query('filePath') filePath: string, 
+        @Res() res: FastifyReply // <-- Remplacement de Express Response
+    ) {
+        if (!diskPath || !filePath) throw new Error('Paramètres manquants');
+        
+        const fullPath = path.join(diskPath, filePath);
+        
+        // Fastify n'a pas res.sendFile() par défaut. 
+        // La méthode standard est d'envoyer un ReadStream.
+        const stream = fs.createReadStream(fullPath);
+        return res.send(stream);
     }
 
-    try {
-        const fullPath = path.join(diskPath, folderPath);
-        
-        // On récupère le buffer (ou le stream) depuis le service
-        const zipBuffer = await this.diskService.downloadFolderAsZip(fullPath);
+    @Get('downloadFolderAsZip')
+    async downloadFolderAsZip(
+        @Query('diskPath') diskPath: string,
+        @Query('folderPath') folderPath: string,
+        @Res() res: FastifyReply // <-- Remplacement
+    ) {
+        if (!diskPath || !folderPath) {
+            throw new Error('diskPath and folderPath are required');
+        }
 
-        const fileName = `${path.basename(folderPath)}.zip`;
+        try {
+            const fullPath = path.join(diskPath, folderPath);
+            const zipBuffer = await this.diskService.downloadFolderAsZip(fullPath);
+            const fileName = `${path.basename(folderPath)}.zip`;
 
-        // On configure les headers pour forcer le téléchargement côté navigateur
-        res.set({
-            'Content-Type': 'application/zip',
-            'Content-Disposition': `attachment; filename="${fileName}"`,
-            'Content-Length': zipBuffer.length,
-        });
+            // En Fastify, c'est .headers() (avec un 's') au lieu de .set()
+            res.headers({
+                'Content-Type': 'application/zip',
+                'Content-Disposition': `attachment; filename="${fileName}"`,
+                'Content-Length': zipBuffer.length,
+            });
 
-        // On envoie le contenu binaire
-        return res.end(zipBuffer);
-        
-    } catch (error) {
-        console.error('Zip Error:', error);
-        // Utilise les exceptions intégrées de Nest pour des messages d'erreur propres
-        throw new Error('Erreur lors de la récupération du zip');
+            // En Fastify, c'est .send() au lieu de .end()
+            return res.send(zipBuffer);
+            
+        } catch (error) {
+            console.error('Zip Error:', error);
+            throw new Error('Erreur lors de la récupération du zip');
+        }
     }
-}
 
 @Post('uploadFiles')
-@UseInterceptors(FilesInterceptor('files', Infinity)) 
 async uploadFiles(
-  @Query('diskPath') diskPath: string,
-  @Query('filePath') filePath: string,
-  @UploadedFiles() files: Express.Multer.File[]
+    @Query('diskPath') diskPath: string,
+    @Query('filePath') filePath: string,
+    @Req() req: FastifyRequest
 ) {
-  if (!diskPath || !filePath || !files?.length) {
-    throw new BadRequestException('Paramètres ou fichiers/dossiers manquants');
-  }
+    if (!diskPath || !filePath) {
+        throw new BadRequestException('Paramètres manquants');
+    }
 
-  return this.diskService.saveFiles(diskPath, filePath, files);
+    // On définit le type du tableau pour éviter l'erreur "never"
+    const uploadedFiles: { filename: string; mimetype: string; buffer: Buffer }[] = [];
+
+    // .files() est maintenant reconnu grâce à l'import en haut du fichier
+    const parts = req.files();
+
+    for await (const part of parts) {
+        const fileBuffer = await part.toBuffer();
+        
+        uploadedFiles.push({
+            filename: part.filename,
+            mimetype: part.mimetype,
+            buffer: fileBuffer
+        });
+    }
+
+    if (uploadedFiles.length === 0) {
+        throw new BadRequestException('Fichiers/dossiers manquants');
+    }
+
+    return this.diskService.saveFiles(diskPath, filePath, uploadedFiles);
 }
-
 }
