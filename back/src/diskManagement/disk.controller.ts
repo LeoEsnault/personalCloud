@@ -3,7 +3,7 @@ import {
     BadRequestException, UseGuards 
 } from "@nestjs/common";
 import { DiskService } from "./disk.service";
-import { FastifyReply, FastifyRequest } from 'fastify'; // Import de Fastify
+import { FastifyReply, FastifyRequest } from 'fastify'; 
 import * as path from 'path';
 import * as fs from 'fs';
 import { SupabaseAuthGuard } from "@src/supabase/supabase.authGuard";
@@ -47,14 +47,13 @@ export class DiskController {
     streamFile(
         @Query('diskPath') diskPath: string, 
         @Query('filePath') filePath: string, 
-        @Res() res: FastifyReply // <-- Remplacement de Express Response
+        @Res() res: FastifyReply 
     ) {
         if (!diskPath || !filePath) throw new Error('Paramètres manquants');
         
         const fullPath = path.join(diskPath, filePath);
         
-        // Fastify n'a pas res.sendFile() par défaut. 
-        // La méthode standard est d'envoyer un ReadStream.
+
         const stream = fs.createReadStream(fullPath);
         return res.send(stream);
     }
@@ -63,7 +62,7 @@ export class DiskController {
     async downloadFolderAsZip(
         @Query('diskPath') diskPath: string,
         @Query('folderPath') folderPath: string,
-        @Res() res: FastifyReply // <-- Remplacement
+        @Res() res: FastifyReply 
     ) {
         if (!diskPath || !folderPath) {
             throw new Error('diskPath and folderPath are required');
@@ -74,14 +73,12 @@ export class DiskController {
             const zipBuffer = await this.diskService.downloadFolderAsZip(fullPath);
             const fileName = `${path.basename(folderPath)}.zip`;
 
-            // En Fastify, c'est .headers() (avec un 's') au lieu de .set()
             res.headers({
                 'Content-Type': 'application/zip',
                 'Content-Disposition': `attachment; filename="${fileName}"`,
                 'Content-Length': zipBuffer.length,
             });
 
-            // En Fastify, c'est .send() au lieu de .end()
             return res.send(zipBuffer);
             
         } catch (error) {
@@ -100,10 +97,8 @@ async uploadFiles(
         throw new BadRequestException('Paramètres manquants');
     }
 
-    // On définit le type du tableau pour éviter l'erreur "never"
     const uploadedFiles: { filename: string; mimetype: string; buffer: Buffer }[] = [];
 
-    // .files() est maintenant reconnu grâce à l'import en haut du fichier
     const parts = req.files();
 
     for await (const part of parts) {
