@@ -6,7 +6,7 @@ import { DiskService } from "./disk.service";
 import { FastifyReply, FastifyRequest } from 'fastify'; // Import de Fastify
 import * as path from 'path';
 import * as fs from 'fs';
-import { SupabaseAuthGuard } from "src/supabase/supabase.authGuard";
+import { SupabaseAuthGuard } from "@src/supabase/supabase.authGuard";
 import "@fastify/multipart";
 
 @UseGuards(SupabaseAuthGuard)
