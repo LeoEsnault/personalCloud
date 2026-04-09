@@ -74,7 +74,7 @@
             </button>
           </div>
           
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             <div 
               v-for="(file, index) in filesList" 
               :key="index"
@@ -101,61 +101,65 @@
               <Icon icon="mdi:close-box" width="24" />
             </button>
           </div>
-
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-              <div 
-                v-for="(item, index) in subFilesList" 
-                :key="index"
-                @click="openFile(item, true)"
-                @contextmenu.prevent="openContextMenu($event, file, false)"
-                @touchstart="onTouchStartMenu($event, file, false)"
-                @touchend="onTouchEndMenu"
-                class="flex items-center transition-all select-none active:scale-95 overflow-hidden border border-gray-100 rounded-lg bg-white shadow-sm group hover:border-blue-400"
-                :class="isImage(item.name || item) && thumbnailsUrls[item.name || item] ? 'p-0' : 'p-3 gap-2'"
+       
+            <div
+              class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 flex-1 overflow-y-auto"
+              ref="gridContainer"
+            >
+           <div
+              v-for="(item, index) in subFilesList"
+              :key="index"
+              @click="openFile(item, true)"
+              @contextmenu.prevent="openContextMenu($event, item, false)"
+              @touchstart="onTouchStartMenu($event, item, false)"
+              @touchend="onTouchEndMenu"
+              class="flex items-center transition-all select-none active:scale-95 overflow-hidden border border-gray-100 rounded-lg bg-white shadow-sm group hover:border-blue-400"
+              :class="isImage(item.name || item) && thumbnailsUrls[item.name || item] ? 'p-0' : 'p-3 gap-2'"
+            >
+              <!-- Pour les images -->
+              <div
+                v-if="isImage(item.name || item)"
+                class="w-full aspect-square overflow-hidden"
               >
-                
-                <div 
-                  v-if="isImage(item.name || item) && thumbnailsUrls[item.name || item]" 
-                  class="w-full aspect-square overflow-hidden"
-                >
-                  <img 
-                    :src="thumbnailsUrls[item.name || item]" 
-                    class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                <img
+                  v-if="thumbnailsUrls[item.name || item]"
+                  :src="thumbnailsUrls[item.name || item]"
+                  class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                  @load="markThumbnailAsLoaded(item.name || item)"
+                />
+                <div v-else class="w-full h-full flex items-center justify-center bg-gray-50">
+                  <Icon
+                    icon="mdi:loading"
+                    class="animate-spin text-blue-400"
+                    width="20"
                   />
                 </div>
-
-                <div 
-                  v-else 
-                  class="w-10 h-10 shrink-0 flex items-center justify-center rounded bg-gray-50 border border-gray-100"
-                >
-                  <Icon 
-                    v-if="isImage(item.name || item)" 
-                    icon="mdi:loading" 
-                    class="animate-spin text-blue-400" 
-                    width="20" 
-                  />
-
-                  <div v-else-if="isVideo(item.name || item)" class="w-full h-full flex items-center justify-center bg-gray-800 rounded">
-                    <Icon icon="mdi:play-circle" width="24" class="text-white opacity-90" />
-                  </div>
-
-                  <Icon 
-                    v-else
-                    :icon="isFile(item.name || item) ? 'vscode-icons:default-file' : 'ic:baseline-folder'" 
-                    width="22" 
-                    class="group-hover:rotate-12 transition-transform"
-                    :class="!isFile(item.name || item) ? 'text-blue-500' : ''"
-                  />
-                </div>
-
-                <span 
-                  v-if="!(isImage(item.name || item) && thumbnailsUrls[item.name || item])"
-                  class="truncate font-medium flex-1 text-sm text-gray-600"
-                >
-                  {{ item.name || item }}
-                </span>
-
               </div>
+
+              <!-- Pour les autres types -->
+              <div
+                v-else
+                class="w-10 h-10 shrink-0 flex items-center justify-center rounded bg-gray-50 border border-gray-100"
+              >
+                <div v-if="isVideo(item.name || item)" class="w-full h-full flex items-center justify-center bg-gray-800 rounded">
+                  <Icon icon="mdi:play-circle" width="24" class="text-white opacity-90" />
+                </div>
+                <Icon
+                  v-else
+                  :icon="isFile(item.name || item) ? 'vscode-icons:default-file' : 'ic:baseline-folder'"
+                  width="22"
+                  class="group-hover:rotate-12 transition-transform"
+                  :class="!isFile(item.name || item) ? 'text-blue-500' : ''"
+                />
+              </div>
+
+              <span
+                v-if="!(isImage(item.name || item) && thumbnailsUrls[item.name || item])"
+                class="truncate font-medium flex-1 text-sm text-gray-600"
+              >
+                {{ item.name || item }}
+              </span>
+            </div>
             </div>
         </div>
       </div>
@@ -301,7 +305,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router'; 
 import { useAuthStore } from '@/stores/auth.store';
 import { useDiskStore } from '@/stores/disk.store';
@@ -327,6 +331,16 @@ const currentMediaList = ref([]);
 const currentMediaIndex = ref(-1);
 const isMediaSubLevel = ref(false);
 const thumbnailsUrls = ref({});
+const THUMBNAILS_BATCH_SIZE = 30;
+const loadedThumbnails = ref(new Set());
+const visibleRange = ref({ start: 0, end: THUMBNAILS_BATCH_SIZE });
+const visibleItems = ref([]);
+const gridContainer = ref(null);
+
+const markThumbnailAsLoaded = (fileName) => {
+  loadedThumbnails.value.add(fileName);
+};
+
 
 const fileInput = ref(null);
 const contextMenu = ref({ show: false, item: null, isSubLevel: false });
@@ -344,17 +358,17 @@ const isFile = (name) => {
   return /\.[a-zA-Z0-9]+$/.test(fileName);
 };
 
-const preloadThumbnails = async (list, isSubLevel) => {
-  // Optionnel : Nettoyer les anciens blobs pour la mémoire
-  Object.values(thumbnailsUrls.value).forEach(url => URL.revokeObjectURL(url));
-  thumbnailsUrls.value = {};
+// Fonction pour charger les miniatures dans la plage visible
+const loadVisibleThumbnails = async () => {
+  const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
 
-  for (const item of list) {
+  for (let i = visibleRange.value.start; i < visibleRange.value.end && i < imageItems.length; i++) {
+    const item = imageItems[i];
     const fileName = item.name || item;
-    if (isImage(fileName)) {
+
+    if (!thumbnailsUrls.value[fileName] && !loadedThumbnails.value.has(fileName)) {
       try {
-        let pathToSend = (isSubLevel && fileSelected.value) ? `${fileSelected.value}/${fileName}` : fileName;
-        // On appelle ton store (qui gère l'auth)
+        let pathToSend = fileSelected.value ? `${fileSelected.value}/${fileName}` : fileName;
         const blob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
         thumbnailsUrls.value[fileName] = URL.createObjectURL(blob);
       } catch (e) {
@@ -362,6 +376,57 @@ const preloadThumbnails = async (list, isSubLevel) => {
       }
     }
   }
+};
+
+
+
+const handleScroll = () => {
+  const scrollPosition = gridContainer.value;
+  
+  if (!scrollPosition) return;
+
+  const scrollTop = el.scrollTop;
+  const scrollHeight = el.scrollHeight;
+  const clientHeight = el.clientHeight;
+  const threshold = 150;
+  const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
+
+  if (scrollHeight - (scrollTop + clientHeight) < threshold) {
+    if (visibleRange.value.end < imageItems.length) {
+      console.log('Chargement du lot suivant...');
+      visibleRange.value.start = visibleRange.value.end;
+      visibleRange.value.end = Math.min(
+        visibleRange.value.end + THUMBNAILS_BATCH_SIZE,
+        imageItems.length
+      );
+      loadVisibleThumbnails();
+    }
+  }
+};
+
+const preloadThumbnails = async (list, isSubLevel) => {
+  for (const item of list) {
+    const fileName = item.name || item;
+    if (isImage(fileName) && !thumbnailsUrls.value[fileName]) {
+      try {
+        let pathToSend = (isSubLevel && fileSelected.value) ? `${fileSelected.value}/${fileName}` : fileName;
+        const blob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
+        thumbnailsUrls.value[fileName] = URL.createObjectURL(blob);
+        loadedThumbnails.value.add(fileName);
+      } catch (e) {
+        console.error("Erreur miniature:", fileName);
+      }
+    }
+  }
+};
+
+const updateVisibleItems = () => {
+  const newItems = subFilesList.value.filter(item =>
+    !loadedThumbnails.value.has(item.name || item)
+  ).slice(0, THUMBNAILS_BATCH_SIZE);
+
+  visibleItems.value = [...visibleItems.value, ...newItems];
+  preloadThumbnails(newItems, true);
 };
 
 // --- GESTION DU MENU D'ACTIONS (Context Menu) ---
@@ -484,13 +549,20 @@ async function openFile(file, isSubLevel = false) {
     return;
   }
 
-  if (isFile(fileName)) return;
+ if (isFile(fileName)) return;
 
   fileSelected.value = pathToSend;
   try {
     const response = await diskStore.getFileContenu(selectionedDisk.value, pathToSend);
     subFilesList.value = response || [];
-    preloadThumbnails(subFilesList.value, true);
+
+    // Réinitialise le chargement des miniatures
+    loadedThumbnails.value.clear();
+    thumbnailsUrls.value = {};
+    visibleRange.value = { start: 0, end: THUMBNAILS_BATCH_SIZE };
+
+    // Charge les premières miniatures
+    await loadVisibleThumbnails();
   } catch (error) {
     toast.error('Erreur lecture dossier');
   }
@@ -585,7 +657,13 @@ onMounted(async () => {
   } catch (e) {
     toast.error('Cloud hors ligne');
   }
+  window.addEventListener('scroll', handleScroll);
 });
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll);
+})
+
 </script>
 
 <style scoped>
