@@ -102,25 +102,58 @@
             </button>
           </div>
 
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-              <div 
-                v-for="(item, index) in subFilesList" 
-                :key="index"
-                @click="openFile(item, true)"
-                class="flex items-center gap-2 p-3 bg-white border border-gray-100 rounded-lg text-sm text-gray-600 shadow-sm group hover:border-blue-400 transition-all select-none active:scale-95 overflow-hidden"
-              >
-                <Icon 
-                  :icon="isFile(item.name || item) ? 'vscode-icons:default-file' : 'ic:baseline-folder'" 
-                  width="20" 
-                  class="shrink-0 group-hover:rotate-12 transition-transform"
-                  :class="!isFile(item.name || item) ? 'text-blue-500' : ''"
-                />
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+  <div 
+    v-for="(item, index) in subFilesList" 
+    :key="index"
+    @click="openFile(item, true)"
+    class="flex items-center transition-all select-none active:scale-95 overflow-hidden border border-gray-100 rounded-lg bg-white shadow-sm group hover:border-blue-400"
+    :class="isImage(item.name || item) && thumbnailsUrls[item.name || item] ? 'p-0' : 'p-3 gap-2'"
+  >
+    
+    <div 
+      v-if="isImage(item.name || item) && thumbnailsUrls[item.name || item]" 
+      class="w-full aspect-square overflow-hidden"
+    >
+      <img 
+        :src="thumbnailsUrls[item.name || item]" 
+        class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+      />
+    </div>
 
-                <span class="truncate font-medium flex-1">
-                  {{ item.name || item }}
-                </span>
-              </div>
-          </div>
+    <div 
+      v-else 
+      class="w-10 h-10 shrink-0 flex items-center justify-center rounded bg-gray-50 border border-gray-100"
+    >
+      <Icon 
+        v-if="isImage(item.name || item)" 
+        icon="mdi:loading" 
+        class="animate-spin text-blue-400" 
+        width="20" 
+      />
+
+      <div v-else-if="isVideo(item.name || item)" class="w-full h-full flex items-center justify-center bg-gray-800 rounded">
+        <Icon icon="mdi:play-circle" width="24" class="text-white opacity-90" />
+      </div>
+
+      <Icon 
+        v-else
+        :icon="isFile(item.name || item) ? 'vscode-icons:default-file' : 'ic:baseline-folder'" 
+        width="22" 
+        class="group-hover:rotate-12 transition-transform"
+        :class="!isFile(item.name || item) ? 'text-blue-500' : ''"
+      />
+    </div>
+
+    <span 
+      v-if="!(isImage(item.name || item) && thumbnailsUrls[item.name || item])"
+      class="truncate font-medium flex-1 text-sm text-gray-600"
+    >
+      {{ item.name || item }}
+    </span>
+
+  </div>
+</div>
         </div>
       </div>
 <!-- Context Menu -->
@@ -215,7 +248,7 @@
         @touchstart="handleTouchStart"
         @touchend="handleTouchEnd"
       >
-        <div class="absolute top-4 left-0 right-0 px-6 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity z-20">
+        <div class="absolute top-4 left-0 right-0 px-6 flex justify-between items-center transition-opacity z-20">
           <div class="bg-black/60 backdrop-blur-md text-white px-4 py-2 rounded-full text-xs font-bold border border-white/10">
             {{ currentMediaIndex + 1 }} / {{ currentMediaList.length }}
           </div>
@@ -290,6 +323,7 @@ const mediaContainer = ref(null);
 const currentMediaList = ref([]);
 const currentMediaIndex = ref(-1);
 const isMediaSubLevel = ref(false);
+const thumbnailsUrls = ref({});
 
 const fileInput = ref(null);
 const contextMenu = ref({ show: false, item: null, isSubLevel: false });
@@ -305,6 +339,26 @@ const isVideo = (name) => /\.(mp4|webm|ogg|mov|mkv)$/i.test(name);
 const isFile = (name) => {
   const fileName = typeof name === 'object' ? name.name : name;
   return /\.[a-zA-Z0-9]+$/.test(fileName);
+};
+
+const preloadThumbnails = async (list, isSubLevel) => {
+  // Optionnel : Nettoyer les anciens blobs pour la mémoire
+  Object.values(thumbnailsUrls.value).forEach(url => URL.revokeObjectURL(url));
+  thumbnailsUrls.value = {};
+
+  for (const item of list) {
+    const fileName = item.name || item;
+    if (isImage(fileName)) {
+      try {
+        let pathToSend = (isSubLevel && fileSelected.value) ? `${fileSelected.value}/${fileName}` : fileName;
+        // On appelle ton store (qui gère l'auth)
+        const blob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
+        thumbnailsUrls.value[fileName] = URL.createObjectURL(blob);
+      } catch (e) {
+        console.error("Erreur miniature:", fileName);
+      }
+    }
+  }
 };
 
 // --- GESTION DU MENU D'ACTIONS (Context Menu) ---
@@ -433,6 +487,7 @@ async function openFile(file, isSubLevel = false) {
   try {
     const response = await diskStore.getFileContenu(selectionedDisk.value, pathToSend);
     subFilesList.value = response || [];
+    preloadThumbnails(subFilesList.value, true);
   } catch (error) {
     toast.error('Erreur lecture dossier');
   }
