@@ -331,10 +331,9 @@ const currentMediaList = ref([]);
 const currentMediaIndex = ref(-1);
 const isMediaSubLevel = ref(false);
 const thumbnailsUrls = ref({});
-const THUMBNAILS_BATCH_SIZE = 30;
+const THUMBNAILS_BATCH_SIZE = 10;
 const loadedThumbnails = ref(new Set());
 const visibleRange = ref({ start: 0, end: THUMBNAILS_BATCH_SIZE });
-const visibleItems = ref([]);
 const gridContainer = ref(null);
 
 const markThumbnailAsLoaded = (fileName) => {
@@ -379,16 +378,15 @@ const loadVisibleThumbnails = async () => {
 };
 
 
-
 const handleScroll = () => {
   const scrollPosition = gridContainer.value;
   
   if (!scrollPosition) return;
 
-  const scrollTop = el.scrollTop;
-  const scrollHeight = el.scrollHeight;
-  const clientHeight = el.clientHeight;
-  const threshold = 150;
+  const scrollTop = scrollPosition.scrollTop;
+  const scrollHeight = scrollPosition.scrollHeight;
+  const clientHeight = scrollPosition.clientHeight;
+  const threshold = 1;
   const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
 
   if (scrollHeight - (scrollTop + clientHeight) < threshold) {
@@ -404,30 +402,6 @@ const handleScroll = () => {
   }
 };
 
-const preloadThumbnails = async (list, isSubLevel) => {
-  for (const item of list) {
-    const fileName = item.name || item;
-    if (isImage(fileName) && !thumbnailsUrls.value[fileName]) {
-      try {
-        let pathToSend = (isSubLevel && fileSelected.value) ? `${fileSelected.value}/${fileName}` : fileName;
-        const blob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
-        thumbnailsUrls.value[fileName] = URL.createObjectURL(blob);
-        loadedThumbnails.value.add(fileName);
-      } catch (e) {
-        console.error("Erreur miniature:", fileName);
-      }
-    }
-  }
-};
-
-const updateVisibleItems = () => {
-  const newItems = subFilesList.value.filter(item =>
-    !loadedThumbnails.value.has(item.name || item)
-  ).slice(0, THUMBNAILS_BATCH_SIZE);
-
-  visibleItems.value = [...visibleItems.value, ...newItems];
-  preloadThumbnails(newItems, true);
-};
 
 // --- GESTION DU MENU D'ACTIONS (Context Menu) ---
 const openContextMenu = (e, item, isSubLevel) => {
