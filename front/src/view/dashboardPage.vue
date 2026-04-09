@@ -103,57 +103,60 @@
           </div>
 
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-  <div 
-    v-for="(item, index) in subFilesList" 
-    :key="index"
-    @click="openFile(item, true)"
-    class="flex items-center transition-all select-none active:scale-95 overflow-hidden border border-gray-100 rounded-lg bg-white shadow-sm group hover:border-blue-400"
-    :class="isImage(item.name || item) && thumbnailsUrls[item.name || item] ? 'p-0' : 'p-3 gap-2'"
-  >
-    
-    <div 
-      v-if="isImage(item.name || item) && thumbnailsUrls[item.name || item]" 
-      class="w-full aspect-square overflow-hidden"
-    >
-      <img 
-        :src="thumbnailsUrls[item.name || item]" 
-        class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-      />
-    </div>
+              <div 
+                v-for="(item, index) in subFilesList" 
+                :key="index"
+                @click="openFile(item, true)"
+                @contextmenu.prevent="openContextMenu($event, file, false)"
+                @touchstart="onTouchStartMenu($event, file, false)"
+                @touchend="onTouchEndMenu"
+                class="flex items-center transition-all select-none active:scale-95 overflow-hidden border border-gray-100 rounded-lg bg-white shadow-sm group hover:border-blue-400"
+                :class="isImage(item.name || item) && thumbnailsUrls[item.name || item] ? 'p-0' : 'p-3 gap-2'"
+              >
+                
+                <div 
+                  v-if="isImage(item.name || item) && thumbnailsUrls[item.name || item]" 
+                  class="w-full aspect-square overflow-hidden"
+                >
+                  <img 
+                    :src="thumbnailsUrls[item.name || item]" 
+                    class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                  />
+                </div>
 
-    <div 
-      v-else 
-      class="w-10 h-10 shrink-0 flex items-center justify-center rounded bg-gray-50 border border-gray-100"
-    >
-      <Icon 
-        v-if="isImage(item.name || item)" 
-        icon="mdi:loading" 
-        class="animate-spin text-blue-400" 
-        width="20" 
-      />
+                <div 
+                  v-else 
+                  class="w-10 h-10 shrink-0 flex items-center justify-center rounded bg-gray-50 border border-gray-100"
+                >
+                  <Icon 
+                    v-if="isImage(item.name || item)" 
+                    icon="mdi:loading" 
+                    class="animate-spin text-blue-400" 
+                    width="20" 
+                  />
 
-      <div v-else-if="isVideo(item.name || item)" class="w-full h-full flex items-center justify-center bg-gray-800 rounded">
-        <Icon icon="mdi:play-circle" width="24" class="text-white opacity-90" />
-      </div>
+                  <div v-else-if="isVideo(item.name || item)" class="w-full h-full flex items-center justify-center bg-gray-800 rounded">
+                    <Icon icon="mdi:play-circle" width="24" class="text-white opacity-90" />
+                  </div>
 
-      <Icon 
-        v-else
-        :icon="isFile(item.name || item) ? 'vscode-icons:default-file' : 'ic:baseline-folder'" 
-        width="22" 
-        class="group-hover:rotate-12 transition-transform"
-        :class="!isFile(item.name || item) ? 'text-blue-500' : ''"
-      />
-    </div>
+                  <Icon 
+                    v-else
+                    :icon="isFile(item.name || item) ? 'vscode-icons:default-file' : 'ic:baseline-folder'" 
+                    width="22" 
+                    class="group-hover:rotate-12 transition-transform"
+                    :class="!isFile(item.name || item) ? 'text-blue-500' : ''"
+                  />
+                </div>
 
-    <span 
-      v-if="!(isImage(item.name || item) && thumbnailsUrls[item.name || item])"
-      class="truncate font-medium flex-1 text-sm text-gray-600"
-    >
-      {{ item.name || item }}
-    </span>
+                <span 
+                  v-if="!(isImage(item.name || item) && thumbnailsUrls[item.name || item])"
+                  class="truncate font-medium flex-1 text-sm text-gray-600"
+                >
+                  {{ item.name || item }}
+                </span>
 
-  </div>
-</div>
+              </div>
+            </div>
         </div>
       </div>
 <!-- Context Menu -->
