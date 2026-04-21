@@ -331,7 +331,7 @@ const currentMediaList = ref([]);
 const currentMediaIndex = ref(-1);
 const isMediaSubLevel = ref(false);
 const thumbnailsUrls = ref({});
-const THUMBNAILS_BATCH_SIZE = 10;
+const THUMBNAILS_BATCH_SIZE = 5;
 const loadedThumbnails = ref(new Set());
 const visibleRange = ref({ start: 0, end: THUMBNAILS_BATCH_SIZE });
 const gridContainer = ref(null);
@@ -368,13 +368,44 @@ const loadVisibleThumbnails = async () => {
     if (!thumbnailsUrls.value[fileName] && !loadedThumbnails.value.has(fileName)) {
       try {
         let pathToSend = fileSelected.value ? `${fileSelected.value}/${fileName}` : fileName;
-        const blob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
-        thumbnailsUrls.value[fileName] = URL.createObjectURL(blob);
+        
+        // 1. Récupération du Blob original
+        const rawBlob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
+        
+        // 2. Compression (ex: 0.5 pour 50% de qualité)
+        const compressedBlob = await compressImage(rawBlob, 0.5);
+        
+        // 3. Stockage de l'URL du blob compressé
+        thumbnailsUrls.value[fileName] = URL.createObjectURL(compressedBlob);
+        loadedThumbnails.value.add(fileName); // N'oublie pas de marquer comme chargé
+        
       } catch (e) {
         console.error("Erreur miniature:", fileName);
       }
     }
   }
+};
+
+const compressImage = (blob, quality = 0.6) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = URL.createObjectURL(blob);
+    img.onload = () => {
+      URL.revokeObjectURL(img.src);
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      // Optionnel : Tu peux aussi resize ici pour gagner encore plus de perf
+      canvas.width = img.width; 
+      canvas.height = img.height;
+      
+      ctx.drawImage(img, 0, 0);
+      
+      canvas.toBlob((compressedBlob) => {
+        resolve(compressedBlob);
+      }, 'image/jpeg', quality); // On force le JPEG pour la compression
+    };
+  });
 };
 
 
