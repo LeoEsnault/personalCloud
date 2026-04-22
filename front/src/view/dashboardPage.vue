@@ -335,6 +335,9 @@ const THUMBNAILS_BATCH_SIZE = 14;
 const loadedThumbnails = ref(new Set());
 const visibleRange = ref({ start: 0, end: THUMBNAILS_BATCH_SIZE });
 const gridContainer = ref(null);
+const actualPath = ref(null);
+
+
 
 const markThumbnailAsLoaded = (fileName) => {
   loadedThumbnails.value.add(fileName);
@@ -421,7 +424,7 @@ const onTouchEndMenu = () => clearTimeout(longPressTimer);
 const handleGlobalDownload = async () => {
   const { item, isSubLevel } = contextMenu.value;
   const name = item?.name || item;
-  const pathToSend = (isSubLevel && fileSelected.value) ? `${fileSelected.value}/${name}` : name;
+  const pathToSend = actualPath.value || (isSubLevel && fileSelected.value) ? `${fileSelected.value}/${name}` : name;
   const isFileItem = isFile(name);
 
   closeContextMenu();
@@ -514,6 +517,8 @@ async function openFile(file, isSubLevel = false) {
   const fileName = file.name || file;
   let pathToSend = (isSubLevel && fileSelected.value) ? `${fileSelected.value}/${fileName}` : fileName;
 
+  actualPath.value = pathToSend;
+
   if (isImage(fileName) || isVideo(fileName)) {
     const list = isSubLevel ? subFilesList.value : filesList.value;
     currentMediaList.value = list.filter(f => isImage(f.name || f) || isVideo(f.name || f));
@@ -529,6 +534,7 @@ async function openFile(file, isSubLevel = false) {
   try {
     const response = await diskStore.getFileContenu(selectionedDisk.value, pathToSend);
     subFilesList.value = response || [];
+
 
     // Réinitialise le chargement des miniatures
     loadedThumbnails.value.clear();
