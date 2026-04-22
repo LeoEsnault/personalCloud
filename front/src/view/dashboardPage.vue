@@ -331,11 +331,9 @@ const currentMediaList = ref([]);
 const currentMediaIndex = ref(-1);
 const isMediaSubLevel = ref(false);
 const thumbnailsUrls = ref({});
-const THUMBNAILS_BATCH_SIZE = 14;
+const THUMBNAILS_BATCH_SIZE = 5;
 const loadedThumbnails = ref(new Set());
-const pendingThumbnails = new Set(); 
 const visibleRange = ref({ start: 0, end: THUMBNAILS_BATCH_SIZE });
-const gridContainer = ref(null);
 
 const markThumbnailAsLoaded = (fileName) => {
   loadedThumbnails.value.add(fileName);
@@ -358,89 +356,43 @@ const isFile = (name) => {
   return /\.[a-zA-Z0-9]+$/.test(fileName);
 };
 
-// Génère une miniature vidéo via un élément <video> temporaire
-const generateVideoThumbnail = (blobUrl) => {
-  return new Promise((resolve, reject) => {
-    const video = document.createElement('video');
-    video.src = blobUrl;
-    video.crossOrigin = 'anonymous';
-    video.muted = true;
-    video.playsInline = true;
-    video.currentTime = 1; // Capture à 1 seconde
-
-    video.onloadeddata = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth || 320;
-      canvas.height = video.videoHeight || 180;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/jpeg', 0.7));
-      URL.revokeObjectURL(blobUrl); // Libère le blob vidéo après capture
-    };
-
-    video.onerror = reject;
-    video.load();
-  });
-};
-
 // Fonction pour charger les miniatures dans la plage visible
 const loadVisibleThumbnails = async () => {
-  const mediaItems = subFilesList.value.filter(
-    item => isImage(item.name || item) || isVideo(item.name || item)
-  );
+  const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
 
-  // ✅ Toujours itérer de 0 à end — pas de start
-  // Les items déjà chargés sont skipés via les guards
-  for (let i = 0; i < visibleRange.value.end && i < mediaItems.length; i++) {
-    const item = mediaItems[i];
+  for (let i = visibleRange.value.start; i < visibleRange.value.end && i < imageItems.length; i++) {
+    const item = imageItems[i];
     const fileName = item.name || item;
 
-    // Skip si déjà chargé avec succès OU déjà en cours
-    if (thumbnailsUrls.value[fileName] !== undefined || pendingThumbnails.has(fileName)) continue;
-
-    pendingThumbnails.add(fileName); // marquer "en cours"
-
-    try {
-      const pathToSend = fileSelected.value ? `${fileSelected.value}/${fileName}` : fileName;
-      const blob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
-
-      if (isVideo(fileName)) {
-        const blobUrl = URL.createObjectURL(blob);
-        try {
-          thumbnailsUrls.value[fileName] = await generateVideoThumbnail(blobUrl);
-        } catch {
-          thumbnailsUrls.value[fileName] = null; // null = échec connu, ne pas réessayer
-          console.warn("Miniature vidéo échouée:", fileName);
-        }
-      } else {
+    if (!thumbnailsUrls.value[fileName] && !loadedThumbnails.value.has(fileName)) {
+      try {
+        let pathToSend = fileSelected.value ? `${fileSelected.value}/${fileName}` : fileName;
+        const blob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
         thumbnailsUrls.value[fileName] = URL.createObjectURL(blob);
+      } catch (e) {
+        console.error("Erreur miniature:", fileName);
       }
-
-      loadedThumbnails.value.add(fileName); // ✅ marqué succès seulement ici
-    } catch (e) {
-      pendingThumbnails.delete(fileName); // ✅ échec réseau = on pourra réessayer
-      console.error("Erreur miniature:", fileName);
     }
   }
 };
 
+
 const handleScroll = () => {
-  const container = gridContainer.value;
-  if (!container) return;
+  // On récupère les valeurs depuis le document
+  const scrollTop = window.scrollY || document.documentElement.scrollTop;
+  const clientHeight = document.documentElement.clientHeight;
+  const scrollHeight = document.documentElement.scrollHeight;
+  
+  const threshold = 1;
+  const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
 
-  const { scrollTop, scrollHeight, clientHeight } = container;
-  const THRESHOLD = 150;
-
-  const mediaItems = subFilesList.value.filter(
-    item => isImage(item.name || item) || isVideo(item.name || item)
-  );
-
-  if (scrollHeight - (scrollTop + clientHeight) < THRESHOLD) {
-    if (visibleRange.value.end < mediaItems.length) {
-      // ✅ On étend juste `end`, pas besoin de toucher `start`
+  // Logique de détection du bas de page
+  if (scrollHeight - (scrollTop + clientHeight) < threshold) {
+    if (visibleRange.value.end < imageItems.length) {
+      visibleRange.value.start = visibleRange.value.end;
       visibleRange.value.end = Math.min(
         visibleRange.value.end + THUMBNAILS_BATCH_SIZE,
-        mediaItems.length
+        imageItems.length
       );
       loadVisibleThumbnails();
     }
@@ -676,19 +628,12 @@ onMounted(async () => {
   } catch (e) {
     toast.error('Cloud hors ligne');
   }
-  await nextTick();
-  if (gridContainer.value) {
-    gridContainer.value.addEventListener('scroll', handleScroll);
-  }
+  window.addEventListener('scroll', handleScroll);
 });
 
 onUnmounted(() => {
-  if (gridContainer.value) {
-    gridContainer.value.removeEventListener('scroll', handleScroll);
-  }
-  // Nettoyage mémoire
-  resetThumbnails();
-});
+  window.removeEventListener('scroll', handleScroll);
+})
 
 </script>
 
