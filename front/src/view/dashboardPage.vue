@@ -357,31 +357,21 @@ const isFile = (name) => {
   return /\.[a-zA-Z0-9]+$/.test(fileName);
 };
 
-
-
 // Fonction pour charger les miniatures dans la plage visible
 const loadVisibleThumbnails = async () => {
   const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
 
-  // On boucle de 0 jusqu'à la fin de la plage visible
-  for (let i = 0; i < visibleRange.value.end && i < imageItems.length; i++) {
+  for (let i = visibleRange.value.start; i < visibleRange.value.end && i < imageItems.length; i++) {
     const item = imageItems[i];
     const fileName = item.name || item;
 
-    // Si pas d'URL et pas déjà marqué comme chargé
     if (!thumbnailsUrls.value[fileName] && !loadedThumbnails.value.has(fileName)) {
       try {
         let pathToSend = fileSelected.value ? `${fileSelected.value}/${fileName}` : fileName;
-        
         const blob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
-        
-        // Optionnel : compresse ici si tu as ajouté la fonction compressImage
         thumbnailsUrls.value[fileName] = URL.createObjectURL(blob);
-        
-        // IMPORTANT : Marquer comme chargé pour ne plus y revenir
-        loadedThumbnails.value.add(fileName);
       } catch (e) {
-        console.error("Erreur miniature:", fileName, e);
+        console.error("Erreur miniature:", fileName);
       }
     }
   }
@@ -389,24 +379,24 @@ const loadVisibleThumbnails = async () => {
 
 
 const handleScroll = () => {
-  const container = gridContainer.value;
-  if (!container) return;
-
-  const { scrollTop, scrollHeight, clientHeight } = container;
-  const threshold = 5; // Marge de sécurité en pixels
+  const scrollPosition = gridContainer.value;
   
-  const isAtBottom = scrollHeight - (scrollTop + clientHeight) < threshold;
+  if (!scrollPosition) return;
 
-  if (isAtBottom) {
-    const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
+  const scrollTop = scrollPosition.scrollTop;
+  const scrollHeight = scrollPosition.scrollHeight;
+  const clientHeight = scrollPosition.clientHeight;
+  const threshold = 1;
+  const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
 
+  if (scrollHeight - (scrollTop + clientHeight) < threshold) {
     if (visibleRange.value.end < imageItems.length) {
-      // On garde start à 0 et on augmente simplement la fin pour charger le lot suivant
+      console.log('Chargement du lot suivant...');
+      visibleRange.value.start = visibleRange.value.end;
       visibleRange.value.end = Math.min(
         visibleRange.value.end + THUMBNAILS_BATCH_SIZE,
         imageItems.length
       );
-      
       loadVisibleThumbnails();
     }
   }
@@ -641,22 +631,12 @@ onMounted(async () => {
   } catch (e) {
     toast.error('Cloud hors ligne');
   }
-
-  if (gridContainer.value) {
-    gridContainer.value.addEventListener('scroll', handleScroll);
-    // charge le premier lot d'image
-    loadVisibleThumbnails();
-  }
+  window.addEventListener('scroll', handleScroll);
 });
 
 onUnmounted(() => {
-  if (gridContainer.value) {
-    gridContainer.value.removeEventListener('scroll', handleScroll);
-  }
-  
-  // Nettoyage mémoire des Blob URLs
-  Object.values(thumbnailsUrls.value).forEach(url => URL.revokeObjectURL(url));
-});
+  window.removeEventListener('scroll', handleScroll);
+})
 
 </script>
 
