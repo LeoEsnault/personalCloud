@@ -358,74 +358,33 @@ const isFile = (name) => {
 };
 
 
+
 // Fonction pour charger les miniatures dans la plage visible
 const loadVisibleThumbnails = async () => {
-  // 1. On filtre pour avoir les images ET les vidéos
-  const mediaItems = subFilesList.value.filter(item => {
-    const name = item.name || item;
-    return isImage(name) || isVideo(name);
-  });
+  const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
 
-  for (let i = 0; i < visibleRange.value.end && i < mediaItems.length; i++) {
-    const item = mediaItems[i];
+  // On boucle de 0 jusqu'à la fin de la plage visible
+  for (let i = 0; i < visibleRange.value.end && i < imageItems.length; i++) {
+    const item = imageItems[i];
     const fileName = item.name || item;
 
+    // Si pas d'URL et pas déjà marqué comme chargé
     if (!thumbnailsUrls.value[fileName] && !loadedThumbnails.value.has(fileName)) {
       try {
         let pathToSend = fileSelected.value ? `${fileSelected.value}/${fileName}` : fileName;
+        
         const blob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
         
-        if (isVideo(fileName)) {
-          // Ici on utilise ton helper pour les vidéos
-          const videoThumbBlob = await getVideoThumbnail(blob); 
-          thumbnailsUrls.value[fileName] = URL.createObjectURL(videoThumbBlob);
-        } else {
-          // Pour les images, on reste sur ton ancienne méthode qui marchait bien
-          thumbnailsUrls.value[fileName] = URL.createObjectURL(blob);
-        }
+        // Optionnel : compresse ici si tu as ajouté la fonction compressImage
+        thumbnailsUrls.value[fileName] = URL.createObjectURL(blob);
         
+        // IMPORTANT : Marquer comme chargé pour ne plus y revenir
         loadedThumbnails.value.add(fileName);
       } catch (e) {
-        console.error("Erreur média:", fileName, e);
-        // On marque quand même comme chargé pour stopper le spam d'erreurs au scroll
-        loadedThumbnails.value.add(fileName); 
+        console.error("Erreur miniature:", fileName, e);
       }
     }
   }
-};
-// Helper pour extraire une frame d'une vidéo
-const getVideoThumbnail = (videoBlob) => {
-  return new Promise((resolve, reject) => {
-    // 1. Créer une URL temporaire pour le blob vidéo
-    const videoUrl = URL.createObjectURL(videoBlob);
-    const video = document.createElement('video');
-    
-    video.src = videoUrl;
-    video.muted = true; // Nécessaire pour l'auto-play/chargement dans certains navigateurs
-    video.currentTime = 1; // On se place à 1 seconde pour éviter l'écran noir du début
-
-    video.onloadeddata = () => {
-      // 2. Créer un canvas pour dessiner la frame
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      // 3. Convertir le dessin en Blob image (JPEG pour le poids)
-      canvas.toBlob((blob) => {
-        // Nettoyage de la mémoire vidéo
-        URL.revokeObjectURL(videoUrl);
-        resolve(blob);
-      }, 'image/jpeg', 0.7); // Qualité à 70%
-    };
-
-    video.onerror = (e) => {
-      URL.revokeObjectURL(videoUrl);
-      reject(e);
-    };
-  });
 };
 
 
