@@ -331,9 +331,10 @@ const currentMediaList = ref([]);
 const currentMediaIndex = ref(-1);
 const isMediaSubLevel = ref(false);
 const thumbnailsUrls = ref({});
-const THUMBNAILS_BATCH_SIZE = 5;
+const THUMBNAILS_BATCH_SIZE = 14;
 const loadedThumbnails = ref(new Set());
 const visibleRange = ref({ start: 0, end: THUMBNAILS_BATCH_SIZE });
+const gridContainer = ref(null);
 
 const markThumbnailAsLoaded = (fileName) => {
   loadedThumbnails.value.add(fileName);
@@ -378,17 +379,19 @@ const loadVisibleThumbnails = async () => {
 
 
 const handleScroll = () => {
-  // On récupère les valeurs depuis le document
-  const scrollTop = window.scrollY || document.documentElement.scrollTop;
-  const clientHeight = document.documentElement.clientHeight;
-  const scrollHeight = document.documentElement.scrollHeight;
+  const scrollPosition = gridContainer.value;
   
+  if (!scrollPosition) return;
+
+  const scrollTop = scrollPosition.scrollTop;
+  const scrollHeight = scrollPosition.scrollHeight;
+  const clientHeight = scrollPosition.clientHeight;
   const threshold = 1;
   const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
 
-  // Logique de détection du bas de page
   if (scrollHeight - (scrollTop + clientHeight) < threshold) {
     if (visibleRange.value.end < imageItems.length) {
+      console.log('Chargement du lot suivant...');
       visibleRange.value.start = visibleRange.value.end;
       visibleRange.value.end = Math.min(
         visibleRange.value.end + THUMBNAILS_BATCH_SIZE,
