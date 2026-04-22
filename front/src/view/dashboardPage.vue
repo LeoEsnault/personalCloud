@@ -333,6 +333,7 @@ const isMediaSubLevel = ref(false);
 const thumbnailsUrls = ref({});
 const THUMBNAILS_BATCH_SIZE = 14;
 const loadedThumbnails = ref(new Set());
+const pendingThumbnails = new Set(); 
 const visibleRange = ref({ start: 0, end: THUMBNAILS_BATCH_SIZE });
 const gridContainer = ref(null);
 
@@ -384,24 +385,20 @@ const generateVideoThumbnail = (blobUrl) => {
 
 // Fonction pour charger les miniatures dans la plage visible
 const loadVisibleThumbnails = async () => {
-  // On inclut images ET vidéos dans le lazy loading
   const mediaItems = subFilesList.value.filter(
     item => isImage(item.name || item) || isVideo(item.name || item)
   );
 
-  for (
-    let i = visibleRange.value.start;
-    i < visibleRange.value.end && i < mediaItems.length;
-    i++
-  ) {
+  // ✅ Toujours itérer de 0 à end — pas de start
+  // Les items déjà chargés sont skipés via les guards
+  for (let i = 0; i < visibleRange.value.end && i < mediaItems.length; i++) {
     const item = mediaItems[i];
     const fileName = item.name || item;
 
-    // Skip si déjà chargé ou en cours
-    if (thumbnailsUrls.value[fileName] || loadedThumbnails.value.has(fileName)) continue;
+    // Skip si déjà chargé avec succès OU déjà en cours
+    if (thumbnailsUrls.value[fileName] !== undefined || pendingThumbnails.has(fileName)) continue;
 
-    // Marquer immédiatement pour éviter les doublons en cas de scroll rapide
-    loadedThumbnails.value.add(fileName);
+    pendingThumbnails.add(fileName); // marquer "en cours"
 
     try {
       const pathToSend = fileSelected.value ? `${fileSelected.value}/${fileName}` : fileName;
@@ -412,28 +409,19 @@ const loadVisibleThumbnails = async () => {
         try {
           thumbnailsUrls.value[fileName] = await generateVideoThumbnail(blobUrl);
         } catch {
-          // Fallback : icône vidéo si la capture échoue
-          thumbnailsUrls.value[fileName] = null;
+          thumbnailsUrls.value[fileName] = null; // null = échec connu, ne pas réessayer
           console.warn("Miniature vidéo échouée:", fileName);
         }
       } else {
         thumbnailsUrls.value[fileName] = URL.createObjectURL(blob);
       }
+
+      loadedThumbnails.value.add(fileName); // ✅ marqué succès seulement ici
     } catch (e) {
+      pendingThumbnails.delete(fileName); // ✅ échec réseau = on pourra réessayer
       console.error("Erreur miniature:", fileName);
     }
   }
-};
-
-// Réinitialise le lazy loading (à appeler quand on change de dossier)
-const resetThumbnails = () => {
-  // Libère les object URLs pour éviter les fuites mémoire
-  Object.values(thumbnailsUrls.value).forEach(url => {
-    if (url && url.startsWith('blob:')) URL.revokeObjectURL(url);
-  });
-  thumbnailsUrls.value = {};
-  loadedThumbnails.value = new Set();
-  visibleRange.value = { start: 0, end: THUMBNAILS_BATCH_SIZE };
 };
 
 const handleScroll = () => {
@@ -441,7 +429,7 @@ const handleScroll = () => {
   if (!container) return;
 
   const { scrollTop, scrollHeight, clientHeight } = container;
-  const THRESHOLD = 150; // px avant le bas pour déclencher le chargement
+  const THRESHOLD = 150;
 
   const mediaItems = subFilesList.value.filter(
     item => isImage(item.name || item) || isVideo(item.name || item)
@@ -449,8 +437,7 @@ const handleScroll = () => {
 
   if (scrollHeight - (scrollTop + clientHeight) < THRESHOLD) {
     if (visibleRange.value.end < mediaItems.length) {
-      console.log('Chargement du lot suivant...');
-      visibleRange.value.start = visibleRange.value.end;
+      // ✅ On étend juste `end`, pas besoin de toucher `start`
       visibleRange.value.end = Math.min(
         visibleRange.value.end + THUMBNAILS_BATCH_SIZE,
         mediaItems.length
