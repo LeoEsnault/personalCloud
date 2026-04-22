@@ -393,6 +393,40 @@ const loadVisibleThumbnails = async () => {
     }
   }
 };
+// Helper pour extraire une frame d'une vidéo
+const getVideoThumbnail = (videoBlob) => {
+  return new Promise((resolve, reject) => {
+    // 1. Créer une URL temporaire pour le blob vidéo
+    const videoUrl = URL.createObjectURL(videoBlob);
+    const video = document.createElement('video');
+    
+    video.src = videoUrl;
+    video.muted = true; // Nécessaire pour l'auto-play/chargement dans certains navigateurs
+    video.currentTime = 1; // On se place à 1 seconde pour éviter l'écran noir du début
+
+    video.onloadeddata = () => {
+      // 2. Créer un canvas pour dessiner la frame
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // 3. Convertir le dessin en Blob image (JPEG pour le poids)
+      canvas.toBlob((blob) => {
+        // Nettoyage de la mémoire vidéo
+        URL.revokeObjectURL(videoUrl);
+        resolve(blob);
+      }, 'image/jpeg', 0.7); // Qualité à 70%
+    };
+
+    video.onerror = (e) => {
+      URL.revokeObjectURL(videoUrl);
+      reject(e);
+    };
+  });
+};
 
 
 const handleScroll = () => {
