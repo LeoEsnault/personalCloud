@@ -386,31 +386,27 @@ let initialBatchSize = 20;
 
 const handleScroll = () => {
   const scrollTop = window.scrollY || document.documentElement.scrollTop;
+  
+  // On ne déclenche la logique que si on a scrollé d'au moins 50px
+  if (Math.abs(scrollTop - lastScrollTop) < 50) return;
+
   const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
   const isScrollingDown = scrollTop > lastScrollTop;
-  
 
   if (isScrollingDown) {
-    // SCROLL VERS LE BAS
-      if (visibleRange.value.end < imageItems.length) {
-        visibleRange.value.start = visibleRange.value.end;
-        
-        // On utilise .value ici
-        visibleRange.value.end = Math.min(
-          visibleRange.value.end + THUMBNAILS_BATCH_SIZE.value,
-          imageItems.length
-        );
-        
-        THUMBNAILS_BATCH_SIZE.value += 2;
-        console.log("Down: ", THUMBNAILS_BATCH_SIZE.value);
-        loadVisibleThumbnails();
-      }
-    
+    if (visibleRange.value.end < imageItems.length) {
+      visibleRange.value.start = visibleRange.value.end;
+      visibleRange.value.end = Math.min(
+        visibleRange.value.end + THUMBNAILS_BATCH_SIZE.value,
+        imageItems.length
+      );
+      
+      THUMBNAILS_BATCH_SIZE.value += 2;
+      loadVisibleThumbnails();
+    }
   } else {
-    // SCROLL VERS LE HAUT
     if (THUMBNAILS_BATCH_SIZE.value > initialBatchSize) {
       THUMBNAILS_BATCH_SIZE.value = Math.max(initialBatchSize, THUMBNAILS_BATCH_SIZE.value - 1);
-      console.log("Up: ", THUMBNAILS_BATCH_SIZE.value);
     }
   }
 
