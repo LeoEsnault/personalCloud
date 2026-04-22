@@ -357,29 +357,56 @@ const isFile = (name) => {
   return /\.[a-zA-Z0-9]+$/.test(fileName);
 };
 
+const getVideoThumbnail = (videoBlob) => {
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    video.src = URL.createObjectURL(videoBlob);
+    video.currentTime = 1; // On se cale à 1s pour éviter l'écran noir du début
+    
+    video.onloadeddata = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      canvas.toBlob((blob) => {
+        URL.revokeObjectURL(video.src); // Nettoyage
+        resolve(blob);
+      }, 'image/jpeg', 0.5);
+    };
+  });
+};
+
 // Fonction pour charger les miniatures dans la plage visible
 const loadVisibleThumbnails = async () => {
-  const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
+  // On filtre images ET vidéos
+  const mediaItems = subFilesList.value.filter(item => 
+    isImage(item.name || item) || isVideo(item.name || item)
+  );
 
-  // On boucle de 0 jusqu'à la fin de la plage visible
-  for (let i = 0; i < visibleRange.value.end && i < imageItems.length; i++) {
-    const item = imageItems[i];
+  for (let i = 0; i < visibleRange.value.end && i < mediaItems.length; i++) {
+    const item = mediaItems[i];
     const fileName = item.name || item;
 
-    // Si pas d'URL et pas déjà marqué comme chargé
     if (!thumbnailsUrls.value[fileName] && !loadedThumbnails.value.has(fileName)) {
       try {
-        let pathToSend = fileSelected.value ? `${fileSelected.value}/${fileName}` : fileName;
-        
-        const blob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
-        
-        // Optionnel : compresse ici si tu as ajouté la fonction compressImage
-        thumbnailsUrls.value[fileName] = URL.createObjectURL(blob);
-        
-        // IMPORTANT : Marquer comme chargé pour ne plus y revenir
+        const pathToSend = fileSelected.value ? `${fileSelected.value}/${fileName}` : fileName;
+        const rawBlob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
+
+        if (isVideo(fileName)) {
+          // Si c'est une vidéo, on génère une miniature image
+          const thumbBlob = await getVideoThumbnail(rawBlob);
+          thumbnailsUrls.value[fileName] = URL.createObjectURL(thumbBlob);
+        } else {
+          // Si c'est une image, compression classique
+          const compressedBlob = await compressImage(rawBlob, 0.5);
+          thumbnailsUrls.value[fileName] = URL.createObjectURL(compressedBlob);
+        }
+
         loadedThumbnails.value.add(fileName);
       } catch (e) {
-        console.error("Erreur miniature:", fileName, e);
+        console.error("Erreur média:", fileName);
       }
     }
   }
