@@ -385,38 +385,40 @@ let lastScrollTop = 0;
 let initialBatchSize = 20; 
 
 const handleScroll = () => {
+  // 1. Position actuelle du scroll (haut de la fenêtre)
   const scrollTop = window.scrollY || document.documentElement.scrollTop;
-  const clientHeight = window.innerHeight;
-  const scrollHeight = document.documentElement.scrollHeight;
-  const threshold = 1050;
   
-  const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
+  // 2. Hauteur de ce que l'utilisateur voit (100vh)
+  const viewportHeight = window.innerHeight;
+  
+  // 3. Hauteur totale de ton document (ta grille + le reste)
+  const totalHeight = document.documentElement.scrollHeight;
+
+  // Détection du sens
   const isScrollingDown = scrollTop > lastScrollTop;
   
+  const threshold = 200; 
 
   if (isScrollingDown) {
-    // SCROLL VERS LE BAS
-    if (scrollHeight - (scrollTop + clientHeight) < threshold) {
+    if (scrollTop + viewportHeight >= totalHeight - threshold) {
+      const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
+
       if (visibleRange.value.end < imageItems.length) {
         visibleRange.value.start = visibleRange.value.end;
-        
-        // On utilise .value ici
         visibleRange.value.end = Math.min(
           visibleRange.value.end + THUMBNAILS_BATCH_SIZE.value,
           imageItems.length
         );
         
         THUMBNAILS_BATCH_SIZE.value += 10;
-        console.log("Down: ", THUMBNAILS_BATCH_SIZE.value);
+        console.log("Chargement déclenché via Viewport");
         loadVisibleThumbnails();
       }
     }
   } else {
-    // SCROLL VERS LE HAUT
-    // On s'assure de ne jamais descendre sous le minimum avec Math.max
+    // Scroll vers le haut : réduction du batch
     if (THUMBNAILS_BATCH_SIZE.value > initialBatchSize) {
       THUMBNAILS_BATCH_SIZE.value = Math.max(initialBatchSize, THUMBNAILS_BATCH_SIZE.value - 5);
-      console.log("Up: ", THUMBNAILS_BATCH_SIZE.value);
     }
   }
 
