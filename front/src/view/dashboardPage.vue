@@ -125,6 +125,7 @@
                   v-if="thumbnailsUrls[item.name || item]"
                   :src="thumbnailsUrls[item.name || item]"
                   class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                  loading="lazy"
                   @load="markThumbnailAsLoaded(item.name || item)"
                 />
                 <div v-else class="w-full h-full flex items-center justify-center bg-gray-50">
