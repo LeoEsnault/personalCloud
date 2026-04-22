@@ -388,7 +388,7 @@ const handleScroll = () => {
   const scrollTop = window.scrollY || document.documentElement.scrollTop;
   
   // On ne déclenche la logique que si on a scrollé d'au moins 50px
-  if (Math.abs(scrollTop - lastScrollTop) < 50) return;
+  if (Math.abs(scrollTop - lastScrollTop) < 200) return;
 
   const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
   const isScrollingDown = scrollTop > lastScrollTop;
