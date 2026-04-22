@@ -331,7 +331,7 @@ const currentMediaList = ref([]);
 const currentMediaIndex = ref(-1);
 const isMediaSubLevel = ref(false);
 const thumbnailsUrls = ref({});
-const THUMBNAILS_BATCH_SIZE = ref(20);
+const THUMBNAILS_BATCH_SIZE = ref(5);
 const loadedThumbnails = ref(new Set());
 const visibleRange = ref({ start: 0, end: THUMBNAILS_BATCH_SIZE });
 const actualPath = ref(null);
@@ -401,7 +401,7 @@ const handleScroll = () => {
           imageItems.length
         );
         
-        THUMBNAILS_BATCH_SIZE.value += 10;
+        THUMBNAILS_BATCH_SIZE.value += 2;
         console.log("Down: ", THUMBNAILS_BATCH_SIZE.value);
         loadVisibleThumbnails();
       }
@@ -409,7 +409,7 @@ const handleScroll = () => {
   } else {
     // SCROLL VERS LE HAUT
     if (THUMBNAILS_BATCH_SIZE.value > initialBatchSize) {
-      THUMBNAILS_BATCH_SIZE.value = Math.max(initialBatchSize, THUMBNAILS_BATCH_SIZE.value - 5);
+      THUMBNAILS_BATCH_SIZE.value = Math.max(initialBatchSize, THUMBNAILS_BATCH_SIZE.value - 1);
       console.log("Up: ", THUMBNAILS_BATCH_SIZE.value);
     }
   }
