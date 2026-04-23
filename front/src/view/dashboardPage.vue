@@ -423,8 +423,8 @@ let initialBatchSize = 20;
 const handleScroll = () => {
   const scrollTop = window.scrollY || document.documentElement.scrollTop;
   
-  // On ne déclenche la logique que si on a scrollé d'au moins 250px
-  if (Math.abs(scrollTop - lastScrollTop) < 150) return;
+  // On ne déclenche la logique que si on a scrollé d'au moins 170px
+  if (Math.abs(scrollTop - lastScrollTop) < 170) return;
 
   const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
   const isScrollingDown = scrollTop > lastScrollTop;
@@ -438,11 +438,13 @@ const handleScroll = () => {
       );
       
       THUMBNAILS_BATCH_SIZE.value += 1;
+      console.log('down', THUMBNAILS_BATCH_SIZE.value)
       loadVisibleThumbnails();
     }
   } else {
     if (THUMBNAILS_BATCH_SIZE.value > initialBatchSize) {
       THUMBNAILS_BATCH_SIZE.value = Math.max(initialBatchSize, THUMBNAILS_BATCH_SIZE.value - 0.5);
+      console.log('up', THUMBNAILS_BATCH_SIZE.value)
     }
   }
 
