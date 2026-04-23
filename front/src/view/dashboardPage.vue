@@ -428,7 +428,7 @@ const handleScroll = async () => {
   const delta = scrollTop - lastScrollTop;
 
   // 2. On ne déclenche que si on a scrollé significativement vers le bas
-  if (delta > 100) {
+  if (delta > 50) {
     isWorking = true; 
     
     const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
