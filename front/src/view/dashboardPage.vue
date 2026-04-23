@@ -437,13 +437,17 @@ const handleScroll = () => {
         imageItems.length
       );
       
-      THUMBNAILS_BATCH_SIZE.value += 0.1;
-      console.log('down', THUMBNAILS_BATCH_SIZE.value)
       loadVisibleThumbnails();
     }
-  } else {
+  } 
+  else if (THUMBNAILS_BATCH_SIZE.value < initialBatchSize)  {
+      THUMBNAILS_BATCH_SIZE.value = Math.max(initialBatchSize, THUMBNAILS_BATCH_SIZE.value - 1);
+      console.log('down', THUMBNAILS_BATCH_SIZE.value)
+    
+  }
+  else {
     if (THUMBNAILS_BATCH_SIZE.value > initialBatchSize) {
-      THUMBNAILS_BATCH_SIZE.value = Math.max(initialBatchSize, THUMBNAILS_BATCH_SIZE.value - 0.1);
+      THUMBNAILS_BATCH_SIZE.value = Math.max(initialBatchSize, THUMBNAILS_BATCH_SIZE.value - 1);
       console.log('up', THUMBNAILS_BATCH_SIZE.value)
     }
   }
