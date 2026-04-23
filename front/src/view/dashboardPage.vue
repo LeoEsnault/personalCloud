@@ -370,13 +370,49 @@ const loadVisibleThumbnails = async () => {
     if (!thumbnailsUrls.value[fileName] && !loadedThumbnails.value.has(fileName)) {
       try {
         let pathToSend = fileSelected.value ? `${fileSelected.value}/${fileName}` : fileName;
-        const blob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
-        thumbnailsUrls.value[fileName] = URL.createObjectURL(blob);
+        
+        // 1. Récupération du gros Blob original
+        const originalBlob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
+        
+        // 2. Compression via Canvas
+        const compressedBlob = await compressImage(originalBlob, 200, 0.7); // 200px, 70% qualité
+        
+        // 3. Stockage de la version légère uniquement
+        thumbnailsUrls.value[fileName] = URL.createObjectURL(compressedBlob);
+        loadedThumbnails.value.add(fileName);
+
       } catch (e) {
         console.error("Erreur miniature:", fileName);
       }
     }
   }
+};
+
+/**
+ * Fonction utilitaire pour compresser une image
+ */
+const compressImage = (blob, maxWidth, quality) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = URL.createObjectURL(blob);
+    
+    img.onload = () => {
+      URL.revokeObjectURL(img.src); // On libère le gros blob immédiatement
+      
+      const canvas = document.createElement('canvas');
+      const ratio = maxWidth / img.width;
+      canvas.width = maxWidth;
+      canvas.height = img.height * ratio;
+
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      // Exportation en JPEG basse qualité (plus léger que PNG)
+      canvas.toBlob((result) => {
+        resolve(result);
+      }, 'image/jpeg', quality);
+    };
+  });
 };
 
 // lazy loading image
