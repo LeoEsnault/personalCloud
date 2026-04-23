@@ -444,7 +444,7 @@ const handleScroll = async () => {
       );
       
       // AUGMENTATION LINÉAIRE STRICTE
-      THUMBNAILS_BATCH_SIZE.value = currentBatch + 1;
+      THUMBNAILS_BATCH_SIZE.value = currentBatch + 5;
       
       console.log('down', THUMBNAILS_BATCH_SIZE.value);
 
@@ -453,12 +453,12 @@ const handleScroll = async () => {
       
       lastScrollTop = scrollTop;
     }
-    isWorking = false; // On libère le verrou
+    isWorking = false; 
   } 
   else if (delta < -170) {
     // Scroll vers le haut : on réduit juste la vitesse sans charger
     if (THUMBNAILS_BATCH_SIZE.value > 20) {
-      THUMBNAILS_BATCH_SIZE.value -= 1;
+      THUMBNAILS_BATCH_SIZE.value -= 5;
       console.log('up', THUMBNAILS_BATCH_SIZE.value);
     }
     lastScrollTop = scrollTop;
