@@ -348,7 +348,7 @@ const markThumbnailAsLoaded = (fileName) => {
 };
 // détection iphone
 const isDesktop = computed(() => {
-  return !/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  return !/iPhone|iPad|iPod/i.test(navigator.userAgent);
 });
 
 const fileInput = ref(null);
