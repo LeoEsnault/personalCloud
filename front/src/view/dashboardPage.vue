@@ -214,11 +214,12 @@
               <button 
               @click="actionImportFolder"
               class="w-full text-left px-4 py-3 hover:bg-emerald-50 text-gray-700 rounded-xl flex items-center gap-4 transition-colors group"
+              v-if="isDesktop"
             >
               <div class="p-2 bg-emerald-100 rounded-lg group-hover:bg-emerald-600 transition-colors">
                 <Icon icon="mdi:file-upload" width="20" class="text-emerald-600 group-hover:text-white" />
               </div>
-              <div v-if="isDesktop">
+              <div>
                 <p class="font-bold text-sm text-gray-800">Importer un dossier</p>
                 <p class="text-[10px] text-gray-400 font-medium">Ajouter un dossier à ce répertoire</p>
               </div>
