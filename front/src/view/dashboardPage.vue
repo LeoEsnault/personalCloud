@@ -428,8 +428,8 @@ const handleScroll = async () => {
   const delta = scrollTop - lastScrollTop;
 
   // 2. On ne déclenche que si on a scrollé significativement vers le bas
-  if (delta > 170) {
-    isWorking = true; // On verrouille direct
+  if (delta > 100) {
+    isWorking = true; 
     
     const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
 
@@ -446,7 +446,6 @@ const handleScroll = async () => {
       // AUGMENTATION LINÉAIRE STRICTE
       THUMBNAILS_BATCH_SIZE.value = currentBatch + 5;
       
-      console.log('down', THUMBNAILS_BATCH_SIZE.value);
 
       // On attend que les images soient traitées avant de libérer le scroll
       await loadVisibleThumbnails();
@@ -459,7 +458,6 @@ const handleScroll = async () => {
     // Scroll vers le haut : on réduit juste la vitesse sans charger
     if (THUMBNAILS_BATCH_SIZE.value > 20) {
       THUMBNAILS_BATCH_SIZE.value -= 5;
-      console.log('up', THUMBNAILS_BATCH_SIZE.value);
     }
     lastScrollTop = scrollTop;
   }
