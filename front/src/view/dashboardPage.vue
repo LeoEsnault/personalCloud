@@ -391,8 +391,8 @@ const loadVisibleThumbnails = async () => {
 /**
  * Fonction utilitaire pour compresser une image
  */
-const compressImage = (blob, maxWidth, quality) => {
-return new Promise((resolve) => {
+const compressImage = (blob, size = 200, quality = 0.7) => {
+  return new Promise((resolve) => {
     const img = new Image();
     img.src = URL.createObjectURL(blob);
     
@@ -416,7 +416,6 @@ return new Promise((resolve) => {
     };
   });
 };
-
 // lazy loading image
 
 let lastScrollTop = 0;
