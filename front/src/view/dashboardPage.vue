@@ -363,26 +363,21 @@ const isFile = (name) => {
 const loadVisibleThumbnails = async () => {
   const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
 
-  for (let i = visibleRange.value.start; i < visibleRange.value.end && i < imageItems.length; i++) {
+  for (let i = visibleRange.value.start; i < visibleRange.value.end; i++) {
     const item = imageItems[i];
+    if (!item) continue;
     const fileName = item.name || item;
 
-    if (!thumbnailsUrls.value[fileName] && !loadedThumbnails.value.has(fileName)) {
+    if (!thumbnailsUrls.value[fileName]) {
+      // On attend un micro-instant pour laisser passer les events de scroll
+      await new Promise(resolve => setTimeout(resolve, 0)); 
+      
       try {
-        let pathToSend = fileSelected.value ? `${fileSelected.value}/${fileName}` : fileName;
-        
-        // 1. Récupération du gros Blob original
-        const originalBlob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
-        
-        // 2. Compression via Canvas
-        const compressedBlob = await compressImage(originalBlob, 200, 0.3); // 200px, 30% qualité
-        
-        // 3. Stockage de la version légère uniquement
-        thumbnailsUrls.value[fileName] = URL.createObjectURL(compressedBlob);
-        loadedThumbnails.value.add(fileName);
-
+        const blob = await diskStore.getMediaFile(selectionedDisk.value, fileName);
+        const compressed = await compressImage(blob, 200, 0.6);
+        thumbnailsUrls.value[fileName] = URL.createObjectURL(compressed);
       } catch (e) {
-        console.error("Erreur miniature:", fileName);
+        console.error(e);
       }
     }
   }
@@ -391,7 +386,7 @@ const loadVisibleThumbnails = async () => {
 /**
  * Fonction utilitaire pour compresser une image
  */
-const compressImage = (blob, size = 200, quality = 0.7) => {
+const compressImage = (blob, maxWidth, quality) => {
   return new Promise((resolve) => {
     const img = new Image();
     img.src = URL.createObjectURL(blob);
@@ -400,22 +395,21 @@ const compressImage = (blob, size = 200, quality = 0.7) => {
       URL.revokeObjectURL(img.src); 
       
       const canvas = document.createElement('canvas');
-      
-      // On définit le ratio basé sur la largeur voulue (200px)
-      const ratio = size / img.width;
-      
-      canvas.width = size;
-      canvas.height = img.height * ratio; // La hauteur s'adapte proportionnellement
+      const ratio = maxWidth / img.width;
+      canvas.width = maxWidth;
+      canvas.height = img.height * ratio;
 
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
+      // Exportation en JPEG basse qualité (plus léger que PNG)
       canvas.toBlob((result) => {
         resolve(result);
       }, 'image/jpeg', quality);
     };
   });
 };
+
 // lazy loading image
 
 let lastScrollTop = 0;
