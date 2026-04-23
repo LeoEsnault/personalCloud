@@ -416,11 +416,13 @@ const compressImage = (blob, maxWidth, quality) => {
 };
 
 // lazy loading image
-
 let lastScrollTop = 0;
 let initialBatchSize = 20; 
+let isProcessing = false; // Le verrou
 
 const handleScroll = () => {
+  if (isProcessing) return; // Si une exécution est en cours, on bloque tout
+
   const scrollTop = window.scrollY || document.documentElement.scrollTop;
   
   if (Math.abs(scrollTop - lastScrollTop) < 170) return;
@@ -428,32 +430,37 @@ const handleScroll = () => {
   const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
   const isScrollingDown = scrollTop > lastScrollTop;
 
+  isProcessing = true; // On verrouille
+
   if (isScrollingDown) {
     if (visibleRange.value.end < imageItems.length) {
       visibleRange.value.start = visibleRange.value.end;
       
+      // On calcule la fin
       visibleRange.value.end = Math.min(
         visibleRange.value.end + Math.floor(THUMBNAILS_BATCH_SIZE.value),
         imageItems.length
       );
-
-      if(THUMBNAILS_BATCH_SIZE.value < initialBatchSize){
-      THUMBNAILS_BATCH_SIZE.value += 1;
-      console.log('down', THUMBNAILS_BATCH_SIZE.value);
-      }
       
+      // On n'augmente que de 1, point final.
+      THUMBNAILS_BATCH_SIZE.value += 1;
+      
+      console.log('down', THUMBNAILS_BATCH_SIZE.value);
       loadVisibleThumbnails();
     }
   } else {
-    // SCROLL VERS LE HAUT
     if (THUMBNAILS_BATCH_SIZE.value > initialBatchSize) {
-      // On réduit la vitesse de chargement pour libérer du CPU
       THUMBNAILS_BATCH_SIZE.value = Math.max(initialBatchSize, THUMBNAILS_BATCH_SIZE.value - 1);
       console.log('up', THUMBNAILS_BATCH_SIZE.value);
     }
   }
 
   lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
+
+  // On libère le verrou après un court instant (100ms)
+  setTimeout(() => {
+    isProcessing = false;
+  }, 100);
 };
 
 // --- GESTION DU MENU D'ACTIONS (Context Menu) ---
