@@ -363,21 +363,26 @@ const isFile = (name) => {
 const loadVisibleThumbnails = async () => {
   const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
 
-  for (let i = visibleRange.value.start; i < visibleRange.value.end; i++) {
+  for (let i = visibleRange.value.start; i < visibleRange.value.end && i < imageItems.length; i++) {
     const item = imageItems[i];
-    if (!item) continue;
     const fileName = item.name || item;
 
-    if (!thumbnailsUrls.value[fileName]) {
-      // On attend un micro-instant pour laisser passer les events de scroll
-      await new Promise(resolve => setTimeout(resolve, 0)); 
-      
+    if (!thumbnailsUrls.value[fileName] && !loadedThumbnails.value.has(fileName)) {
       try {
-        const blob = await diskStore.getMediaFile(selectionedDisk.value, fileName);
-        const compressed = await compressImage(blob, 200, 0.6);
-        thumbnailsUrls.value[fileName] = URL.createObjectURL(compressed);
+        let pathToSend = fileSelected.value ? `${fileSelected.value}/${fileName}` : fileName;
+        
+        // 1. Récupération du gros Blob original
+        const originalBlob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
+        
+        // 2. Compression via Canvas
+        const compressedBlob = await compressImage(originalBlob, 200, 0.3); // 200px, 30% qualité
+        
+        // 3. Stockage de la version légère uniquement
+        thumbnailsUrls.value[fileName] = URL.createObjectURL(compressedBlob);
+        loadedThumbnails.value.add(fileName);
+
       } catch (e) {
-        console.error(e);
+        console.error("Erreur miniature:", fileName);
       }
     }
   }
