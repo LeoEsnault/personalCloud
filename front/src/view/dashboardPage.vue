@@ -218,7 +218,7 @@
               <div class="p-2 bg-emerald-100 rounded-lg group-hover:bg-emerald-600 transition-colors">
                 <Icon icon="mdi:file-upload" width="20" class="text-emerald-600 group-hover:text-white" />
               </div>
-              <div>
+              <div v-if="isDesktop">
                 <p class="font-bold text-sm text-gray-800">Importer un dossier</p>
                 <p class="text-[10px] text-gray-400 font-medium">Ajouter un dossier à ce répertoire</p>
               </div>
@@ -235,14 +235,18 @@
           </div>
         </div>
       </div>
-
-      <input type="file" ref="fileInput" multiple class="hidden"
-       @change="handleFileUpload" 
-        webkitdirectory  
-        mozdirectory 
-       />
+<!-- Hidden File Input -->
+     <input 
+      type="file" 
+      ref="fileInput" 
+      multiple 
+      class="hidden"
+      @change="handleFileUpload" 
+      :webkitdirectory="isDesktop"
+      :directory="isDesktop"
+    />
     </div>
-
+<!-- Media Preview Modal -->
     <div 
       v-if="previewMedia.url" 
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-md"
@@ -341,7 +345,10 @@ const actualPath = ref(null);
 const markThumbnailAsLoaded = (fileName) => {
   loadedThumbnails.value.add(fileName);
 };
-
+// détection iphone
+const isDesktop = computed(() => {
+  return !/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+});
 
 const fileInput = ref(null);
 const contextMenu = ref({ show: false, item: null, isSubLevel: false });
