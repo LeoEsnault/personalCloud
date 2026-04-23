@@ -444,7 +444,7 @@ const handleScroll = async () => {
       );
       
       // AUGMENTATION LINÉAIRE STRICTE
-      THUMBNAILS_BATCH_SIZE.value = currentBatch + 10;
+      THUMBNAILS_BATCH_SIZE.value = currentBatch + 30;
       
 
       // On attend que les images soient traitées avant de libérer le scroll
