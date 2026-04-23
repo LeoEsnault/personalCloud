@@ -436,9 +436,11 @@ const handleScroll = () => {
         visibleRange.value.end + Math.floor(THUMBNAILS_BATCH_SIZE.value),
         imageItems.length
       );
-      
+
+      if(THUMBNAILS_BATCH_SIZE.value < initialBatchSize){
       THUMBNAILS_BATCH_SIZE.value += 1;
       console.log('down', THUMBNAILS_BATCH_SIZE.value);
+      }
       
       loadVisibleThumbnails();
     }
