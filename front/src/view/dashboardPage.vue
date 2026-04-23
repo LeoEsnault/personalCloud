@@ -441,7 +441,7 @@ const handleScroll = () => {
     }
   } 
   else if (THUMBNAILS_BATCH_SIZE.value < initialBatchSize)  {
-      THUMBNAILS_BATCH_SIZE.value = Math.max(initialBatchSize, THUMBNAILS_BATCH_SIZE.value - 1);
+      THUMBNAILS_BATCH_SIZE.value = Math.max(initialBatchSize, THUMBNAILS_BATCH_SIZE.value + 1);
       console.log('down', THUMBNAILS_BATCH_SIZE.value)
     
   }
