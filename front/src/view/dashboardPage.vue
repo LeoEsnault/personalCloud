@@ -375,7 +375,7 @@ const loadVisibleThumbnails = async () => {
         const originalBlob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
         
         // 2. Compression via Canvas
-        const compressedBlob = await compressImage(originalBlob, 200, 0.4); // 200px, 40% qualité
+        const compressedBlob = await compressImage(originalBlob, 200, 0.3); // 200px, 30% qualité
         
         // 3. Stockage de la version légère uniquement
         thumbnailsUrls.value[fileName] = URL.createObjectURL(compressedBlob);
@@ -392,7 +392,7 @@ const loadVisibleThumbnails = async () => {
  * Fonction utilitaire pour compresser une image
  */
 const compressImage = (blob, maxWidth, quality) => {
-  return new Promise((resolve) => {
+return new Promise((resolve) => {
     const img = new Image();
     img.src = URL.createObjectURL(blob);
     
@@ -400,14 +400,16 @@ const compressImage = (blob, maxWidth, quality) => {
       URL.revokeObjectURL(img.src); 
       
       const canvas = document.createElement('canvas');
-      const ratio = maxWidth / img.width;
-      canvas.width = maxWidth;
-      canvas.height = img.height * ratio;
+      
+      // On définit le ratio basé sur la largeur voulue (200px)
+      const ratio = size / img.width;
+      
+      canvas.width = size;
+      canvas.height = img.height * ratio; // La hauteur s'adapte proportionnellement
 
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-      // Exportation en JPEG basse qualité (plus léger que PNG)
       canvas.toBlob((result) => {
         resolve(result);
       }, 'image/jpeg', quality);
