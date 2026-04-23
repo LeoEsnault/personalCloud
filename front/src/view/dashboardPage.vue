@@ -375,7 +375,7 @@ const loadVisibleThumbnails = async () => {
         const originalBlob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
         
         // 2. Compression via Canvas
-        const compressedBlob = await compressImage(originalBlob, 200, 0.7); // 200px, 70% qualité
+        const compressedBlob = await compressImage(originalBlob, 200, 0.4); // 200px, 40% qualité
         
         // 3. Stockage de la version légère uniquement
         thumbnailsUrls.value[fileName] = URL.createObjectURL(compressedBlob);
@@ -397,7 +397,7 @@ const compressImage = (blob, maxWidth, quality) => {
     img.src = URL.createObjectURL(blob);
     
     img.onload = () => {
-      URL.revokeObjectURL(img.src); // On libère le gros blob immédiatement
+      URL.revokeObjectURL(img.src); 
       
       const canvas = document.createElement('canvas');
       const ratio = maxWidth / img.width;
