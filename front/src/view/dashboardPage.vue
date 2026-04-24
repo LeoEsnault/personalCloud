@@ -386,8 +386,11 @@ const loadVisibleThumbnails = async () => {
         // 1. Récupération du fichier original
         const originalBlob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
         
-        // 2. Stockage et marquage
-        thumbnailsUrls.value[fileName] = URL.createObjectURL(originalBlob);
+        // 2. Compression (0.3 de qualité pour être ultra léger)
+        const compressedBlob = await compressImage(originalBlob, 200, 0.3);
+        
+        // 3. Stockage et marquage
+        thumbnailsUrls.value[fileName] = URL.createObjectURL(compressedBlob);
         loadedThumbnails.value.add(fileName);
 
       } catch (e) {
@@ -423,6 +426,33 @@ const attachVisibilityObserver = (htmlElement, fileName) => {
     htmlElement.dataset.fileName = fileName;
     visibilityObserver.observe(htmlElement);
   }
+};
+
+/**
+ * Fonction utilitaire pour compresser une image
+ */
+const compressImage = (blob, maxWidth, quality) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = URL.createObjectURL(blob);
+    
+    img.onload = () => {
+      URL.revokeObjectURL(img.src); 
+      
+      const canvas = document.createElement('canvas');
+      const ratio = maxWidth / img.width;
+      canvas.width = maxWidth;
+      canvas.height = img.height * ratio;
+
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      // Exportation en JPEG basse qualité (plus léger que PNG)
+      canvas.toBlob((result) => {
+        resolve(result);
+      }, 'image/jpeg', quality);
+    };
+  });
 };
 
 
