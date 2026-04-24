@@ -119,6 +119,7 @@
               <!-- Pour les images -->
               <div
                 v-if="isImage(item.name || item)"
+                :ref="(containerElement) => attachVisibilityObserver(containerElement, item.name || item)" 
                 class="w-full aspect-square overflow-hidden"
               >
                 <img
@@ -127,6 +128,7 @@
                   class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                   @load="markThumbnailAsLoaded(item.name || item)"
                 />
+                
                 <div v-else class="w-full h-full flex items-center justify-center bg-gray-50">
                   <Icon
                     icon="mdi:loading"
@@ -340,12 +342,15 @@ const THUMBNAILS_BATCH_SIZE = ref(1);
 const loadedThumbnails = ref(new Set());
 const visibleRange = ref({ start: 0, end: THUMBNAILS_BATCH_SIZE });
 const actualPath = ref(null);
+const visibleFiles = ref([]);
+
 
 
 
 const markThumbnailAsLoaded = (fileName) => {
   loadedThumbnails.value.add(fileName);
 };
+
 // détection iphone
 const isDesktop = computed(() => {
   return !/iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -369,107 +374,74 @@ const isFile = (name) => {
 
 // Fonction pour charger les miniatures dans la plage visible
 const loadVisibleThumbnails = async () => {
-  const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
-
-  for (let i = visibleRange.value.start; i < visibleRange.value.end && i < imageItems.length; i++) {
-    const item = imageItems[i];
-    const fileName = item.name || item;
-
+  // On ne boucle que sur les noms de fichiers actuellement à l'écran
+  for (const fileName of visibleFiles.value) {
+    
+    // On vérifie si on n'a pas déjà généré la miniature
     if (!thumbnailsUrls.value[fileName] && !loadedThumbnails.value.has(fileName)) {
       try {
+        // Préparation du chemin
         let pathToSend = fileSelected.value ? `${fileSelected.value}/${fileName}` : fileName;
         
-        // 1. Récupération du gros Blob original
+        // 1. Récupération du fichier original
         const originalBlob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
         
-        // 2. Compression via Canvas
-        const compressedBlob = await compressImage(originalBlob, 200, 0.3); // 200px, 30% qualité
-        
-        // 3. Stockage de la version légère uniquement
-        thumbnailsUrls.value[fileName] = URL.createObjectURL(compressedBlob);
+        // 2. Stockage et marquage
+        thumbnailsUrls.value[fileName] = URL.createObjectURL(originalBlob);
         loadedThumbnails.value.add(fileName);
 
       } catch (e) {
-        console.error("Erreur miniature:", fileName);
+        console.error("Erreur miniature pour :", fileName, e);
       }
     }
   }
 };
 
-/**
- * Fonction utilitaire pour compresser une image
- */
-const compressImage = (blob, maxWidth, quality) => {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.src = URL.createObjectURL(blob);
+const visibilityObserver = new IntersectionObserver((observedEntries) => {
+  observedEntries.forEach(entry => {
+    const fileName = entry.target.dataset.fileName;
     
-    img.onload = () => {
-      URL.revokeObjectURL(img.src); 
-      
-      const canvas = document.createElement('canvas');
-      const ratio = maxWidth / img.width;
-      canvas.width = maxWidth;
-      canvas.height = img.height * ratio;
-
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-      // Exportation en JPEG basse qualité (plus léger que PNG)
-      canvas.toBlob((result) => {
-        resolve(result);
-      }, 'image/jpeg', quality);
-    };
+    if (entry.isIntersecting) {
+      // L'élément entre dans le viewport
+      if (!visibleFiles.value.includes(fileName)) {
+        visibleFiles.value.push(fileName);
+      }
+    } else {
+      // L'élément sort du viewport
+      visibleFiles.value = visibleFiles.value.filter(name => name !== fileName);
+    }
   });
+}, { threshold: 0.1 });
+
+/**
+ * Attache l'élément du DOM à l'observateur de visibilité
+ * @param {HTMLElement} htmlElement - L'élément de la grille
+ * @param {string} fileName - Le nom du fichier associé
+ */
+const attachVisibilityObserver = (htmlElement, fileName) => {
+  if (htmlElement) {
+    htmlElement.dataset.fileName = fileName;
+    visibilityObserver.observe(htmlElement);
+  }
 };
 
-// lazy loading image
-// Variables stables HORS de la fonction
-let lastScrollTop = 0;
+
 let isWorking = false; 
 
 const handleScroll = async () => {
-  // 1. Si on est déjà en train de charger, on ignore TOTALEMENT le scroll
+//  1. Si on est déjà en train de charger, on ignore TOTALEMENT le scroll
   if (isWorking) return;
 
-  const scrollTop = window.scrollY || document.documentElement.scrollTop;
-  const delta = scrollTop - lastScrollTop;
-
   // 2. On ne déclenche que si on a scrollé significativement vers le bas
-  if (delta > 50) {
+  else {
     isWorking = true; 
-    
-    const imageItems = subFilesList.value.filter(item => isImage(item.name || item));
-
-    if (visibleRange.value.end < imageItems.length) {
-      visibleRange.value.start = visibleRange.value.end;
-      
-      // On calcule la nouvelle fin
-      const currentBatch = Math.floor(THUMBNAILS_BATCH_SIZE.value);
-      visibleRange.value.end = Math.min(
-        visibleRange.value.end + currentBatch,
-        imageItems.length
-      );
-      
-      // AUGMENTATION LINÉAIRE STRICTE
-      THUMBNAILS_BATCH_SIZE.value = currentBatch + 30;
-      
 
       // On attend que les images soient traitées avant de libérer le scroll
       await loadVisibleThumbnails();
       
-      lastScrollTop = scrollTop;
     }
     isWorking = false; 
-  } 
-  else if (delta < -170) {
-    // Scroll vers le haut : on réduit juste la vitesse sans charger
-    if (THUMBNAILS_BATCH_SIZE.value > 20) {
-      THUMBNAILS_BATCH_SIZE.value -= 5;
-    }
-    lastScrollTop = scrollTop;
   }
-};
 
 // --- GESTION DU MENU D'ACTIONS (Context Menu) ---
 const openContextMenu = (e, item, isSubLevel) => {
