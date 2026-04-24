@@ -386,8 +386,8 @@ const loadVisibleThumbnails = async () => {
         // 1. Récupération du fichier original
         const originalBlob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
         
-        // 2. Compression (0.3 de qualité pour être ultra léger)
-        const compressedBlob = await compressImage(originalBlob, 200, 0.3);
+        // 2. Compression (0.2 de qualité pour être ultra léger)
+        const compressedBlob = await compressImage(originalBlob, 200, 0.2);
         
         // 3. Stockage et marquage
         thumbnailsUrls.value[fileName] = URL.createObjectURL(compressedBlob);
@@ -447,10 +447,10 @@ const compressImage = (blob, maxWidth, quality) => {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-      // Exportation en JPEG basse qualité (plus léger que PNG)
+      // Exportation en webp basse qualité
       canvas.toBlob((result) => {
         resolve(result);
-      }, 'image/jpeg', quality);
+      }, 'image/webp', quality);
     };
   });
 };
