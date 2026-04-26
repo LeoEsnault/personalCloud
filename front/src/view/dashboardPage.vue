@@ -387,7 +387,7 @@ const loadVisibleThumbnails = async () => {
         const originalBlob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
         
         // 2. Compression (0.2 de qualité pour être ultra léger)
-        const compressedBlob = await compressImage(originalBlob, 200, 0.2);
+        const compressedBlob = await compressImage(originalBlob, 155, 0.1);
         
         // 3. Stockage et marquage
         thumbnailsUrls.value[fileName] = URL.createObjectURL(compressedBlob);
