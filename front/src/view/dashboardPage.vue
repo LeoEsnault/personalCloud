@@ -387,10 +387,10 @@ const loadVisibleThumbnails = async () => {
         const originalBlob = await diskStore.getMediaFile(selectionedDisk.value, pathToSend);
         
         // 2. Compression (0.2 de qualité pour être ultra léger)
-        const compressedBlob = await compressImage(originalBlob, 200, 0.2);
+        // const compressedBlob = await compressImage(originalBlob, 200, 0.2);
         
         // 3. Stockage et marquage
-        thumbnailsUrls.value[fileName] = URL.createObjectURL(compressedBlob);
+        thumbnailsUrls.value[fileName] = URL.createObjectURL(originalBlob);
         loadedThumbnails.value.add(fileName);
 
       } catch (e) {
@@ -431,29 +431,29 @@ const attachVisibilityObserver = (htmlElement, fileName) => {
 /**
  * Fonction utilitaire pour compresser une image
  */
-const compressImage = (blob, maxWidth, quality) => {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.src = URL.createObjectURL(blob);
+// const compressImage = (blob, maxWidth, quality) => {
+//   return new Promise((resolve) => {
+//     const img = new Image();
+//     img.src = URL.createObjectURL(blob);
     
-    img.onload = () => {
-      URL.revokeObjectURL(img.src); 
+//     img.onload = () => {
+//       URL.revokeObjectURL(img.src); 
       
-      const canvas = document.createElement('canvas');
-      const ratio = maxWidth / img.width;
-      canvas.width = maxWidth;
-      canvas.height = img.height * ratio;
+//       const canvas = document.createElement('canvas');
+//       const ratio = maxWidth / img.width;
+//       canvas.width = maxWidth;
+//       canvas.height = img.height * ratio;
 
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+//       const ctx = canvas.getContext('2d');
+//       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-      // Exportation en webp basse qualité
-      canvas.toBlob((result) => {
-        resolve(result);
-      }, 'image/webp', quality);
-    };
-  });
-};
+//       // Exportation en webp basse qualité
+//       canvas.toBlob((result) => {
+//         resolve(result);
+//       }, 'image/webp', quality);
+//     };
+//   });
+// };
 
 
 let isWorking = false; 
